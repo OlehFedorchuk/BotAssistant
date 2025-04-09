@@ -2,6 +2,7 @@ from collections import UserDict
 from datetime import datetime
 import pickle
 
+
 def validate_phone(value):
     """
     Phone number validation:
@@ -11,6 +12,7 @@ def validate_phone(value):
     if not value.isdigit() or not (9 <= len(value) <= 14):
         raise ValueError('The phone has to be 9 to 14 digits')
     return value
+
 
 def validate_birthday(value):
     '''
@@ -43,6 +45,8 @@ def validate_birthday(value):
     return datetime(year, month, day).date()
 
 # -------------------------- Exception handler -----------------------------------------------
+
+
 def exception_handler(func):
     """Decorator for catching exceptions and returning a friendly error message"""
     def wrapper(*args, **kwargs):
@@ -78,6 +82,7 @@ class Phone(Field):
     def __init__(self, value):
         super().__init__(value)
 
+
 class Birthday(Field):
     '''Class for sorting the Birthday'''
 
@@ -87,6 +92,7 @@ class Birthday(Field):
 
     def __str__(self):
         return self.value.strftime('%d.%m.%Y')
+
 
 class Record:
     """Class for sorting the information about a contact, including name and phone list"""
@@ -127,19 +133,22 @@ class Record:
         return f'Contact name: {self.name}, phones: {phone_str} {bday_str}'
 
 # ------- add_contact, change_contact, show_phone, search_contacts, show_all, delete_contact ------------------------
+
+
 class AddressBook(UserDict):
     """Класс для управления записями контактов."""
+
     def add_record(self, record):
         self.data[record.name.value] = record
-        
+
     def find_record(self, name):
         return self.data.get(name)
-    
+
     def delete_record(self, name):
         if name in self.data:
             del self.data[name]
-            
-    def upcoming_birthday(self, days = 7):
+
+    def upcoming_birthday(self, days=7):
         '''
         Returns a list of contacts with a birthday
         '''
@@ -147,17 +156,20 @@ class AddressBook(UserDict):
         today = datetime.now().date()
         for record in self.data.values():
             if record.birthday:
-                bday_this_year = record.birthday.value.replace(year = today.year)
+                bday_this_year = record.birthday.value.replace(year=today.year)
                 if bday_this_year < today:
-                    bday_this_year = record.birthday.value.replace(year = today.year + 1)
+                    bday_this_year = record.birthday.value.replace(
+                        year=today.year + 1)
                 if 0 <= (bday_this_year - today).days <= days:
                     list_bday.append(record)
-                    
+
         return list_bday
-def __str__(self):
+
+    def __str__(self):
         if not self.data:
             return 'List is empty'
         return '\n'.join(str(record) for record in self.data.values())
+
 
 @exception_handler
 def add_contact(book, name, phone):
@@ -213,17 +225,19 @@ def add_birthday_to_contact(book, name, birthday_str):
     record.add_birthday(birthday_str)
     return f'Birthday {birthday_str} added to contact {name}'
 
-def show_birthday (book, name):
+
+def show_birthday(book, name):
     record = book.find_record(name)
     if record and record.birthday:
         return f"{record.name.value}'s birthday is {record.birthday}"
     return 'Birthday is not set for this contact'
 
+
 def upcoming_birthday(book):
     '''
     Returns list of contacts to send birthday wishes
     '''
-    list_bday = book.get_upcoming_birthday()
+    list_bday = book.upcoming_birthday()
     if not list_bday:
         return 'No upcoming birthday in the next week'
     today = datetime.now().date()
@@ -233,19 +247,24 @@ def upcoming_birthday(book):
         if bday_this_year < today:
             bday_this_year = record.birthday.value.replace(year=today.year + 1)
         days_left = (bday_this_year - today).days
-        lines.append(f'{record.name.value}:{record.birthday}(in {days_left} days)')
+        lines.append(
+            f'{record.name.value}:{record.birthday}(in {days_left} days)')
     return '\n'.join(lines)
 
-def save_data (book, filename='addressbook.pkl'):
+
+def save_data(book, filename='addressbook.pkl'):
     with open(filename, 'wb') as f:
         pickle.dump(book, f)
-        
-def load_datа (filename='addressbook.pkl'):
+
+
+def load_datа(filename='addressbook.pkl'):
     try:
         with open(filename, 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
         return AddressBook()
+
+
 def main():
     # book = AddressBook()
     book = load_datа()  # Download at the start
