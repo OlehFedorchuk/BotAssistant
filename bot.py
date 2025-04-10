@@ -4,7 +4,6 @@ import pickle
 import re
 import difflib
 
-
 def validate_phone(value):
     """
     Phone number validation:
@@ -149,17 +148,22 @@ class Record:
     def add_note(self, note):
         self.note = note
 
+    def edit_note(self, note):
+        self.note = note
+
+    def remove_note(self):
+        self.note = ''
+
     def show_note(self):
         return self.note
 
     def __str__(self):
-        if self.phones:
-            phone_str = ', '.join(str(k)for k in self.phones)
-        else:
-            phone_str = 'No phones'
 
+        phone_str = ', '.join(str(k)
+                              for k in self.phones) if self.phones else 'No phones'
         bday_str = f', Birthday: {self.birthday}' if self.birthday else ''
         note_str = f', Note:{self.note}' if self.note else ''
+        feat/command-helper
         phone_str = ', '.join(str(k)
                               for k in self.phones) if self.phones else 'No phones'
         bday_str = f', Birthday: {self.birthday}' if self.birthday else ''
@@ -267,6 +271,24 @@ def add_note(book, name, note):
     raise KeyError
 
 
+@exception_handler
+def edit_note(book, name, note):
+    record = book.find_record(name)
+    if record:
+        record.edit_note(note)
+        return f'Note added to contact {name}'
+    raise KeyError
+
+
+@exception_handler
+def remove_note(book, name):
+    record = book.find_record(name)
+    if record:
+        record.remove_note()
+        return f'Note removed from contact {name}'
+    raise KeyError
+
+
 def show_note(book, name):
     record = book.find_record(name)
     if record and record.note:
@@ -341,6 +363,10 @@ def upcoming_birthday(book):
 # ============ Added functions of saving and personalization`` ==================================
 
 
+# =============================================================================================
+# ============ Added functions of saving and personalization`` ==================================
+
+
 def save_data(book, filename='addressbook.pkl'):
     with open(filename, 'wb') as f:
         pickle.dump(book, f)
@@ -353,6 +379,7 @@ def load_datа(filename='addressbook.pkl'):
     except FileNotFoundError:
         return AddressBook()
 
+#  feat/command-helper
 
 # -------------------------- Функція для визначення команди -----------------------------------------------
 def guess_command(user_input, known_commands):
@@ -391,7 +418,11 @@ def main():
 
     print('Hi! I am a console assistant bot')
     while True:
-        user_input = input('Enter command(hello, add, change, phone, search, all, delete, add-birthday, show-birthday, birthdays exit), name, phone number, set_email, edit_email, remove_email, add-note, show-note), name, phone number:: ')
+
+        user_input = input('''Enter command(hello, add, change, edit-name, 
+                           add-note, edit-note, remove-note,show-note,
+                           phone, search, all, delete, add-birthday, show-birthday,
+                           email, edit-email, remove-email, exit, close), name, phone number:: ''')
 
         if not user_input.strip():
             continue
@@ -428,6 +459,10 @@ def main():
             print(edit_name(book, args[0], args[1]))
         elif command == 'add-note' and len(args) >= 2:
             print(add_note(book, args[0], ' '.join(args[1:])))
+        elif command == 'edit-note' and len(args) >= 2:
+            print(edit_note(book, args[0], ' '.join(args[1:])))
+        elif command == 'remove-note' and len(args) >= 1:
+            print(remove_note(book, args[0]))
         elif command == 'show-note' and len(args) >= 1:
             print(show_note(book, args[0]))
         elif command == 'phone' and len(args) >= 1:
