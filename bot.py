@@ -1,6 +1,8 @@
 from collections import UserDict
 from datetime import datetime
 import pickle
+import re
+
 
 
 def validate_phone(value):
@@ -43,6 +45,7 @@ def validate_birthday(value):
     if not (1 <= day <= max_day):
         raise ValueError(f'Day must be between 1 and {max_day}')
     return datetime(year, month, day).date()
+# -------------------------- Exception handler -----------------------------------------------
 
 
 def exception_handler(func):
@@ -79,8 +82,7 @@ class Phone(Field):
 
     def __init__(self, value):
         super().__init__(value)
-
-# ? ================= class Birthday =======================================================
+# ================= class Birthday =======================================================
 
 
 class Birthday(Field):
@@ -93,17 +95,20 @@ class Birthday(Field):
     def __str__(self):
         return self.value.strftime('%d.%m.%Y')
 
+
 # ============================= Record ======================================================
 
 
 class Record:
     """Class for sorting the information about a contact, including name and phone list"""
 
-    def __init__(self, name):
+    def __init__(self, name, email=None):
         self.name = Name(name)
         self.phones = []
         self.birthday = None
         self.note = ''
+        self.email = email    
+
 # -------------------------- Class methods -----------------------------------------------
 
     def add_phone(self, phone):
@@ -128,6 +133,15 @@ class Record:
 
     def find_phone(self, phone):
         return next((k for k in self.phones if k.value == phone), None)
+    
+    def set_email(self, email_str: str):
+        self.email = Email(email_str)
+
+    def edit_email(self, new_email_str: str):
+        self.email = Email(new_email_str)
+
+    def remove_email(self):
+        self.email = None
 
     def edit_name(self, new_name):
         self.name = Name(new_name)
@@ -146,9 +160,30 @@ class Record:
 
         bday_str = f', Birthday: {self.birthday}' if self.birthday else ''
         note_str = f', Note:{self.note}' if self.note else ''
-        return f'Contact name: {self.name}, phones: {phone_str} {bday_str} {note_str}'
-# ! need to improve this code
-# ====================== AddressBook =====================================================
+        phone_str = ', '.join(str(k) for k in self.phones) if self.phones else 'No phones'
+        bday_str = f', Birthday: {self.birthday}' if self.birthday else ''
+        email_str = f', Email: {self.email.value}' if self.email else ''
+        return f'Contact name: {self.name}, phones: {phone_str}{bday_str}{email_str}{note_str}'
+# ------- add_contact, change_contact, show_phone, search_contacts, show_all, delete_contact ------------------------
+class Email:
+    def __init__(self, email: str):
+        self.value = email
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, email: str):
+        if self.validate_email(email):
+            self._value = email
+        else:
+            raise ValueError(f"Невірний формат email: {email}")
+
+    @staticmethod
+    def validate_email(email: str) -> bool:
+        pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        return re.match(pattern, email) is not None
 
 
 class AddressBook(UserDict):
@@ -164,7 +199,9 @@ class AddressBook(UserDict):
         if name in self.data:
             del self.data[name]
 
-    def get_upcoming_birthday(self, days=7):
+
+    def upcoming_birthday(self, days=7):
+
         '''
         Returns a list of contacts with a birthday
         '''
@@ -181,6 +218,7 @@ class AddressBook(UserDict):
 
         return list_bday
 
+
     def rename_record(self, old_name, new_name):
         if old_name in self.data:
             record = self.data.pop(old_name)
@@ -195,6 +233,7 @@ class AddressBook(UserDict):
         return '\n'.join(str(record) for record in self.data.values())
 # =========================================================================================
 # =========================================================================================
+
 
 
 @exception_handler
@@ -286,7 +325,7 @@ def upcoming_birthday(book):
     '''
     Returns list of contacts to send birthday wishes
     '''
-    list_bday = book.get_upcoming_birthday()
+    list_bday = book.upcoming_birthday()
     if not list_bday:
         return 'No upcoming birthday in the next week'
     today = datetime.now().date()
@@ -314,9 +353,7 @@ def load_datа(filename='addressbook.pkl'):
             return pickle.load(f)
     except FileNotFoundError:
         return AddressBook()
-# =============================================================================================
-# =============================================================================================
-
+ 
 
 def main():
     # book = AddressBook()
@@ -324,8 +361,8 @@ def main():
 
     print('Hi! I am a console assistant bot')
     while True:
-        user_input = input(
-            'Enter command(hello, add, change, phone, search, all, delete, add-birthday, show-birthday, birthdays exit, add-note, show-note), name, phone number: ')
+        user_input = input('Enter command(hello, add, change, phone, search, all, delete, add-birthday, show-birthday, birthdays exit), name, phone number, set_email, edit_email, remove_email, add-note, show-note), name, phone number:: ')
+
         parts = user_input.strip().split()
         if not parts:
             continue
@@ -361,6 +398,33 @@ def main():
             print(show_birthday(book, args[0]))
         elif command == 'birthdays':
             print(upcoming_birthday(book))
+        elif command == 'email' and len(args) >= 2:
+            record = book.find_record(args[0])
+            if record:
+                try:
+                    record.set_email(args[1])
+                    print(f"Email {args[1]} додано до контакту {args[0]}")
+                except ValueError as e:
+                    print(f"Помилка: {e}")
+            else:
+                print(f"Контакт {args[0]} не знайдено")
+        elif command == 'edit_email' and len(args) >= 2:
+            record = book.find_record(args[0])
+            if record:
+                try:
+                    record.edit_email(args[1])
+                    print(f"Email {args[1]} оновлено для контакту {args[0]}")
+                except ValueError as e:
+                    print(f"Помилка: {e}")
+            else:
+                print(f"Контакт {args[0]} не знайдено")
+        elif command == 'remove_email' and len(args) >= 1:
+            record = book.find_record(args[0])
+            if record:
+                record.remove_email()
+                print(f"Email видалено для контакту {args[0]}")
+            else:
+                print(f"Контакт {args[0]} не знайдено")
         else:
             print('Unknown command or insufficient arguments. Please try again')
 
