@@ -2,7 +2,7 @@ from collections import UserDict
 from datetime import datetime
 import pickle
 import re
-
+import difflib
 
 
 def validate_phone(value):
@@ -107,7 +107,7 @@ class Record:
         self.phones = []
         self.birthday = None
         self.note = ''
-        self.email = email    
+        self.email = email
 
 # -------------------------- Class methods -----------------------------------------------
 
@@ -133,7 +133,7 @@ class Record:
 
     def find_phone(self, phone):
         return next((k for k in self.phones if k.value == phone), None)
-    
+
     def set_email(self, email_str: str):
         self.email = Email(email_str)
 
@@ -160,11 +160,14 @@ class Record:
 
         bday_str = f', Birthday: {self.birthday}' if self.birthday else ''
         note_str = f', Note:{self.note}' if self.note else ''
-        phone_str = ', '.join(str(k) for k in self.phones) if self.phones else 'No phones'
+        phone_str = ', '.join(str(k)
+                              for k in self.phones) if self.phones else 'No phones'
         bday_str = f', Birthday: {self.birthday}' if self.birthday else ''
         email_str = f', Email: {self.email.value}' if self.email else ''
         return f'Contact name: {self.name}, phones: {phone_str}{bday_str}{email_str}{note_str}'
 # ------- add_contact, change_contact, show_phone, search_contacts, show_all, delete_contact ------------------------
+
+
 class Email:
     def __init__(self, email: str):
         self.value = email
@@ -199,9 +202,7 @@ class AddressBook(UserDict):
         if name in self.data:
             del self.data[name]
 
-
     def upcoming_birthday(self, days=7):
-
         '''
         Returns a list of contacts with a birthday
         '''
@@ -218,7 +219,6 @@ class AddressBook(UserDict):
 
         return list_bday
 
-
     def rename_record(self, old_name, new_name):
         if old_name in self.data:
             record = self.data.pop(old_name)
@@ -233,7 +233,6 @@ class AddressBook(UserDict):
         return '\n'.join(str(record) for record in self.data.values())
 # =========================================================================================
 # =========================================================================================
-
 
 
 @exception_handler
@@ -353,20 +352,67 @@ def load_datа(filename='addressbook.pkl'):
             return pickle.load(f)
     except FileNotFoundError:
         return AddressBook()
- 
+
+
+# -------------------------- Функція для визначення команди -----------------------------------------------
+def guess_command(user_input, known_commands):
+    """
+    За допомогою difflib.get_close_matches шукаємо найближчу відповідність введеної команди.
+    Якщо знайдено схожу команду, повертаємо її, інакше повертаємо None.
+    """
+    # Отримуємо перший токен як потенційну команду
+    tokens = user_input.strip().split()
+    if not tokens:
+        return None, []
+    input_cmd = tokens[0].lower()
+
+    # Якщо введена команда точно збігається з однією з відомих, повертаємо її
+    if input_cmd in known_commands:
+        return input_cmd, tokens[1:]
+
+    # Використовуємо difflib для пошуку найближчої команди
+    close_matches = difflib.get_close_matches(
+        input_cmd, known_commands, n=1, cutoff=0.6)
+    if close_matches:
+        return close_matches[0], tokens[1:]
+    return None, tokens[1:]
+
 
 def main():
     # book = AddressBook()
     book = load_datа()  # Download at the start
 
+# Список доступних команд
+    known_commands = [
+        "hello", "add", "change", "phone", "search",
+        "all", "delete", "add-birthday", "show-birthday",
+        "birthdays", "exit", "close"
+    ]
+
     print('Hi! I am a console assistant bot')
     while True:
         user_input = input('Enter command(hello, add, change, phone, search, all, delete, add-birthday, show-birthday, birthdays exit), name, phone number, set_email, edit_email, remove_email, add-note, show-note), name, phone number:: ')
 
-        parts = user_input.strip().split()
-        if not parts:
+        if not user_input.strip():
             continue
-        command, *args = parts
+
+        # Спроба визначити команду за допомогою помічника
+        guessed_command, args = guess_command(user_input, known_commands)
+
+        if guessed_command is None:
+            print('Невідома команда. Будь ласка, спробуйте ще раз.')
+            continue
+
+        # Якщо введена команда не співпадає з тим, що ввів користувач, питаємо підтвердження
+        tokens = user_input.strip().split()
+        if tokens[0].lower() != guessed_command:
+            response = input(
+                f'Можливо, ви мали на увазі "{guessed_command}"? (y/n): ')
+            if response.lower() != 'y':
+                print('Команду не розпізнано. Будь ласка, спробуйте ще раз.')
+                continue
+
+        command = guessed_command
 
         if command in ('exit', 'close'):
             save_data(book)  # saving data before going out
