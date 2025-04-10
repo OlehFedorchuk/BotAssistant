@@ -1,6 +1,7 @@
 from collections import UserDict
 from datetime import datetime
 import pickle
+import re
 
 
 def validate_phone(value):
@@ -43,7 +44,6 @@ def validate_birthday(value):
     if not (1 <= day <= max_day):
         raise ValueError(f'Day must be between 1 and {max_day}')
     return datetime(year, month, day).date()
-
 # -------------------------- Exception handler -----------------------------------------------
 
 
@@ -81,6 +81,7 @@ class Phone(Field):
 
     def __init__(self, value):
         super().__init__(value)
+# ================= class Birthday =======================================================
 
 
 class Birthday(Field):
@@ -94,6 +95,9 @@ class Birthday(Field):
         return self.value.strftime('%d.%m.%Y')
 
 
+# ============================= Record ======================================================
+
+
 class Record:
     """Class for sorting the information about a contact, including name and phone list"""
 
@@ -101,9 +105,10 @@ class Record:
         self.name = Name(name)
         self.phones = []
         self.birthday = None
+        self.note = ''
         self.email = email
-
 # -------------------------- Class methods -----------------------------------------------
+
     def add_phone(self, phone):
         # Validation after creating Phone object
         validated_phone = validate_phone(phone)
@@ -136,13 +141,51 @@ class Record:
     def remove_email(self):
         self.email = None
 
+    def edit_name(self, new_name):
+        self.name = Name(new_name)
+
+    def add_note(self, note):
+        self.note = note
+
+    def edit_note(self, note):
+        self.note = note
+
+    def remove_note(self):
+        self.note = ''
+
+    def show_note(self):
+        return self.note
+
     def __str__(self):
+
         phone_str = ', '.join(str(k)
                               for k in self.phones) if self.phones else 'No phones'
         bday_str = f', Birthday: {self.birthday}' if self.birthday else ''
+        note_str = f', Note:{self.note}' if self.note else ''
         email_str = f', Email: {self.email.value}' if self.email else ''
-        return f'Contact name: {self.name}, phones: {phone_str}{bday_str}{email_str}'
+        return f'Contact name: {self.name}, phones: {phone_str}{bday_str}{email_str}{note_str}'
 # ------- add_contact, change_contact, show_phone, search_contacts, show_all, delete_contact ------------------------
+
+
+class Email:
+    def __init__(self, email: str):
+        self.value = email
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, email: str):
+        if self.validate_email(email):
+            self._value = email
+        else:
+            raise ValueError(f"Невірний формат email: {email}")
+
+    @staticmethod
+    def validate_email(email: str) -> bool:
+        pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        return re.match(pattern, email) is not None
 
 
 class AddressBook(UserDict):
@@ -175,10 +218,20 @@ class AddressBook(UserDict):
 
         return list_bday
 
+    def rename_record(self, old_name, new_name):
+        if old_name in self.data:
+            record = self.data.pop(old_name)
+            record.edit_name(new_name)
+            self.data[new_name] = record
+        else:
+            raise KeyError
+
     def __str__(self):
         if not self.data:
             return 'List is empty'
         return '\n'.join(str(record) for record in self.data.values())
+# =========================================================================================
+# =========================================================================================
 
 
 @exception_handler
@@ -198,6 +251,46 @@ def change_contact(book, name, old_phone, new_phone):
     raise KeyError  # 'Contact not found'
 
 
+@exception_handler
+def edit_name(book, old_name, new_name):
+    book.rename_record(old_name, new_name)
+    return f'Name changed from {old_name} to {new_name}'
+
+
+@exception_handler
+def add_note(book, name, note):
+    record = book.find_record(name)
+    if record:
+        record.add_note(note)
+        return f'Note added to contact {name}'
+    raise KeyError
+
+
+@exception_handler
+def edit_note(book, name, note):
+    record = book.find_record(name)
+    if record:
+        record.edit_note(note)
+        return f'Note added to contact {name}'
+    raise KeyError
+
+
+@exception_handler
+def remove_note(book, name):
+    record = book.find_record(name)
+    if record:
+        record.remove_note()
+        return f'Note removed from contact {name}'
+    raise KeyError
+
+
+def show_note(book, name):
+    record = book.find_record(name)
+    if record and record.note:
+        return f'Note for {name}: {record.note}'
+    return 'Note not found'
+
+
 def show_phone(book, name):
     record = book.find_record(name)
     return str(record) if record else 'Contact was not found'
@@ -205,7 +298,8 @@ def show_phone(book, name):
 
 def search_contacts(book, query):
     results = [record for record in book.data.values(
-    ) if query.lower() in record.name.value.lower()]
+    ) if query.lower() in record.name.value.lower()
+        or any(query in phone.value for phone in record.phones)]
     if results:
         return "\n".join(str(record) for record in results)
     raise KeyError  # "Contact not found"
@@ -262,6 +356,10 @@ def upcoming_birthday(book):
     return '\n'.join(lines)
 
 
+# =============================================================================================
+# ============ Added functions of saving and personalization`` ==================================
+
+
 def save_data(book, filename='addressbook.pkl'):
     with open(filename, 'wb') as f:
         pickle.dump(book, f)
@@ -281,8 +379,11 @@ def main():
 
     print('Hi! I am a console assistant bot')
     while True:
-        user_input = input(
-            'Enter command(hello, add, change, phone, search, all, delete, add-birthday, show-birthday, birthdays exit), name, phone number, set_email, edit_email, remove_email: ')
+        user_input = input('''Enter command(hello, add, change, edit-name, 
+                           add-note, edit-note, remove-note,show-note,
+                           phone, search, all, delete, add-birthday, show-birthday,
+                           email, edit-email, remove-email, exit, close), name, phone number:: ''')
+
         parts = user_input.strip().split()
         if not parts:
             continue
@@ -298,6 +399,16 @@ def main():
             print(add_contact(book, args[0], args[1]))
         elif command == 'change' and len(args) >= 3:
             print(change_contact(book, args[0], args[1], args[2]))
+        elif command == 'edit-name' and len(args) >= 2:
+            print(edit_name(book, args[0], args[1]))
+        elif command == 'add-note' and len(args) >= 2:
+            print(add_note(book, args[0], ' '.join(args[1:])))
+        elif command == 'edit-note' and len(args) >= 2:
+            print(edit_note(book, args[0], ' '.join(args[1:])))
+        elif command == 'remove-note' and len(args) >= 1:
+            print(remove_note(book, args[0]))
+        elif command == 'show-note' and len(args) >= 1:
+            print(show_note(book, args[0]))
         elif command == 'phone' and len(args) >= 1:
             print(show_phone(book, args[0]))
         elif command == 'search' and len(args) >= 1:
