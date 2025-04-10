@@ -107,6 +107,7 @@ class Record:
         self.birthday = None
         self.note = ''
         self.email = email
+
 # -------------------------- Class methods -----------------------------------------------
 
     def add_phone(self, phone):
@@ -354,6 +355,8 @@ def upcoming_birthday(book):
         lines.append(
             f'{record.name.value}:{record.birthday}(in {days_left} days)')
     return '\n'.join(lines)
+# =============================================================================================
+# ============ Added functions of saving and personalization`` ==================================
 
 
 # =============================================================================================
@@ -379,6 +382,7 @@ def main():
 
     print('Hi! I am a console assistant bot')
     while True:
+
         user_input = input('''Enter command(hello, add, change, edit-name, 
                            add-note, edit-note, remove-note,show-note,
                            phone, search, all, delete, add-birthday, show-birthday,
