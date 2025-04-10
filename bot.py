@@ -97,10 +97,11 @@ class Birthday(Field):
 class Record:
     """Class for sorting the information about a contact, including name and phone list"""
 
-    def __init__(self, name):
+    def __init__(self, name, email=None):
         self.name = Name(name)
         self.phones = []
         self.birthday = None
+        self.email = email
 
 # -------------------------- Class methods -----------------------------------------------
     def add_phone(self, phone):
@@ -126,12 +127,21 @@ class Record:
     def find_phone(self, phone):
         return next((k for k in self.phones if k.value == phone), None)
 
+    def set_email(self, email_str: str):
+        self.email = Email(email_str)
+
+    def edit_email(self, new_email_str: str):
+        self.email = Email(new_email_str)
+
+    def remove_email(self):
+        self.email = None
+
     def __str__(self):
         phone_str = ', '.join(str(k)
                               for k in self.phones) if self.phones else 'No phones'
         bday_str = f', Birthday: {self.birthday}' if self.birthday else ''
-        return f'Contact name: {self.name}, phones: {phone_str} {bday_str}'
-
+        email_str = f', Email: {self.email.value}' if self.email else ''
+        return f'Contact name: {self.name}, phones: {phone_str}{bday_str}{email_str}'
 # ------- add_contact, change_contact, show_phone, search_contacts, show_all, delete_contact ------------------------
 
 
@@ -272,7 +282,7 @@ def main():
     print('Hi! I am a console assistant bot')
     while True:
         user_input = input(
-            'Enter command(hello, add, change, phone, search, all, delete, add-birthday, show-birthday, birthdays exit), name, phone number: ')
+            'Enter command(hello, add, change, phone, search, all, delete, add-birthday, show-birthday, birthdays exit), name, phone number, set_email, edit_email, remove_email: ')
         parts = user_input.strip().split()
         if not parts:
             continue
@@ -302,6 +312,33 @@ def main():
             print(show_birthday(book, args[0]))
         elif command == 'birthdays':
             print(upcoming_birthday(book))
+        elif command == 'email' and len(args) >= 2:
+            record = book.find_record(args[0])
+            if record:
+                try:
+                    record.set_email(args[1])
+                    print(f"Email {args[1]} додано до контакту {args[0]}")
+                except ValueError as e:
+                    print(f"Помилка: {e}")
+            else:
+                print(f"Контакт {args[0]} не знайдено")
+        elif command == 'edit_email' and len(args) >= 2:
+            record = book.find_record(args[0])
+            if record:
+                try:
+                    record.edit_email(args[1])
+                    print(f"Email {args[1]} оновлено для контакту {args[0]}")
+                except ValueError as e:
+                    print(f"Помилка: {e}")
+            else:
+                print(f"Контакт {args[0]} не знайдено")
+        elif command == 'remove_email' and len(args) >= 1:
+            record = book.find_record(args[0])
+            if record:
+                record.remove_email()
+                print(f"Email видалено для контакту {args[0]}")
+            else:
+                print(f"Контакт {args[0]} не знайдено")
         else:
             print('Unknown command or insufficient arguments. Please try again')
 
