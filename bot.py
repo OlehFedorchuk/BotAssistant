@@ -8,6 +8,8 @@ from colorama import init, Fore, Back, Style
 init(autoreset=True)
 
 # Function to display a table of available commands
+
+
 def display_commands_table():
     # Define the list of commands grouped by categories
     commands = [
@@ -148,11 +150,11 @@ class Record:
     """
 
     def __init__(self, name, email=None):
-        self.name = Name(name)  
-        self.phones = []  
-        self.birthday = None  
-        self.note = ''  
-        self.email = Email(email) if email else None  
+        self.name = Name(name)
+        self.phones = []
+        self.birthday = None
+        self.note = ''
+        self.email = Email(email) if email else None
 
     def add_phone(self, phone):
         """Adds a phone number to the contact."""
@@ -218,7 +220,7 @@ class Record:
         including name, phones, birthday, email, and notes.
         """
         phone_str = ', '.join(str(k)
-        for k in self.phones) if self.phones else '📵 No phones'
+                              for k in self.phones) if self.phones else '📵 No phones'
         bday_str = f'🎂 Birthday:{Style.RESET_ALL}{self.birthday}' if self.birthday else '🎂 Birthday: Not set'
         note_str = f'📝 Note: {Style.RESET_ALL}{self.note}' if self.note else '📝 Note: Not set'
         email_str = f'✉️  Email:{Style.RESET_ALL}{self.email.value}' if self.email else '✉️  Email: Not set'
@@ -297,7 +299,8 @@ class AddressBook(UserDict):
                 bday_this_year = record.birthday.value.replace(year=today.year)
                 if bday_this_year < today:
                     # If the birthday has already passed this year, calculate for the next year
-                    bday_this_year = record.birthday.value.replace(year=today.year + 1)
+                    bday_this_year = record.birthday.value.replace(
+                        year=today.year + 1)
                 # Check if the birthday is within the specified range
                 if 0 <= (bday_this_year - today).days <= days:
                     list_bday.append(record)
@@ -512,20 +515,29 @@ def load_data(filename='addressbook.pkl'):
         return AddressBook()
 
 
-def guess_command(user_input, known_commands):
+def guess_command(user_input, known_commands, threshold=0.8):
+    """
+    Returns the most similar command and list of arguments.
+    If similarity ≥ threshold, the command is applied automatically.
+    """
     tokens = user_input.strip().split()
     if not tokens:
-        return None, []
+        return None, [], False
     input_cmd = tokens[0].lower()
 
     if input_cmd in known_commands:
-        return input_cmd, tokens[1:]
+        return input_cmd, tokens[1:], True
 
-    close_matches = difflib.get_close_matches(
-        input_cmd, known_commands, n=1, cutoff=0.6)
-    if close_matches:
-        return close_matches[0], tokens[1:]
-    return None, tokens[1:]
+    best_match = None
+    highest_ratio = 0.0
+
+    for cmd in known_commands:
+        ratio = difflib.SequenceMatcher(None, input_cmd, cmd).ratio()
+        if ratio > highest_ratio:
+            highest_ratio = ratio
+            best_match = cmd
+
+    return best_match if highest_ratio >= 0.6 else None, tokens[1:], highest_ratio >= threshold
 
 
 def main():
@@ -561,23 +573,23 @@ def main():
             print(Fore.YELLOW + 'Empty input. Please try again.' + Style.RESET_ALL)
             continue
 
-        # Guess the command and extract arguments
-        guessed_command, args = guess_command(user_input, known_commands)
+        #  Guess the command and extract arguments
+        guessed_command, args, is_confident = guess_command(
+            user_input, known_commands)
 
         if guessed_command is None:
-            # Handle unknown commands
-            print(Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
+            print(
+                Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
             continue
 
         tokens = user_input.strip().split()
 
-        if tokens[0].lower() != guessed_command:
-            # Suggest the closest matching command
+        if not is_confident and tokens[0].lower() != guessed_command:
             response = input(
-                Fore.YELLOW + f'Did you mean "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
-
+                Fore.YELLOW + f'Maybe you meant "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
             if response.lower() != 'y':
-                print(Fore.RED + 'Command not recognized. Please try again.' + Style.RESET_ALL)
+                print(
+                    Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
                 continue
 
         command = guessed_command
@@ -624,30 +636,37 @@ def main():
             if record:
                 try:
                     record.set_email(args[1])
-                    print(Fore.GREEN + f"Email {args[1]} added to contact {args[0]}" + Style.RESET_ALL)
+                    print(
+                        Fore.GREEN + f"Email {args[1]} added to contact {args[0]}" + Style.RESET_ALL)
                 except ValueError as e:
                     print(Fore.RED + f"Error: {e}" + Style.RESET_ALL)
             else:
-                print(Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
+                print(
+                    Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
         elif command == 'edit-email' and len(args) >= 2:
             record = book.find_record(args[0])
             if record:
                 try:
                     record.edit_email(args[1])
-                    print(Fore.GREEN + f"Email {args[1]} updated for contact {args[0]}" + Style.RESET_ALL)
+                    print(
+                        Fore.GREEN + f"Email {args[1]} updated for contact {args[0]}" + Style.RESET_ALL)
                 except ValueError as e:
                     print(Fore.RED + f"Error: {e}" + Style.RESET_ALL)
             else:
-                print(Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
+                print(
+                    Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
         elif command == 'remove-email' and len(args) >= 1:
             record = book.find_record(args[0])
             if record:
                 record.remove_email()
-                print(Fore.GREEN + f"Email removed for contact {args[0]}" + Style.RESET_ALL)
+                print(Fore.GREEN +
+                      f"Email removed for contact {args[0]}" + Style.RESET_ALL)
             else:
-                print(Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
+                print(
+                    Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
         else:
-            print(Fore.RED + 'Unknown command or insufficient arguments. Please try again' + Style.RESET_ALL)
+            print(
+                Fore.RED + 'Unknown command or insufficient arguments. Please try again' + Style.RESET_ALL)
 
 
 if __name__ == '__main__':
