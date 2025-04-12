@@ -434,27 +434,29 @@ def load_datа(filename='addressbook.pkl'):
 # -------------------------- Функція для визначення команди -----------------------------------------------
 
 
-def guess_command(user_input, known_commands):
+def guess_command(user_input, known_commands, threshold=0.8):
     """
-    За допомогою difflib.get_close_matches шукаємо найближчу відповідність введеної команди.
-    Якщо знайдено схожу команду, повертаємо її, інакше повертаємо None.
+    Returns the most similar command and list of arguments.
+    If similarity ≥ threshold, the command is applied automatically.
     """
-    # Отримуємо перший токен як потенційну команду
     tokens = user_input.strip().split()
     if not tokens:
-        return None, []
+        return None, [], False
     input_cmd = tokens[0].lower()
 
-    # Якщо введена команда точно збігається з однією з відомих, повертаємо її
     if input_cmd in known_commands:
-        return input_cmd, tokens[1:]
+        return input_cmd, tokens[1:], True
 
-    # Використовуємо difflib для пошуку найближчої команди
-    close_matches = difflib.get_close_matches(
-        input_cmd, known_commands, n=1, cutoff=0.6)
-    if close_matches:
-        return close_matches[0], tokens[1:]
-    return None, tokens[1:]
+    best_match = None
+    highest_ratio = 0.0
+
+    for cmd in known_commands:
+        ratio = difflib.SequenceMatcher(None, input_cmd, cmd).ratio()
+        if ratio > highest_ratio:
+            highest_ratio = ratio
+            best_match = cmd
+
+    return best_match if highest_ratio >= 0.6 else None, tokens[1:], highest_ratio >= threshold
 
 
 def main():
@@ -483,23 +485,22 @@ def main():
             continue
 
         # Спроба визначити команду за допомогою помічника
-        guessed_command, args = guess_command(user_input, known_commands)
+        guessed_command, args, is_confident = guess_command(
+            user_input, known_commands)
 
         if guessed_command is None:
             print(
-                Fore.RED + 'Невідома команда. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
+                Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
             continue
 
-        # Якщо введена команда не співпадає з тим, що ввів користувач, питаємо підтвердження
         tokens = user_input.strip().split()
 
-        if tokens[0].lower() != guessed_command:
+        if not is_confident and tokens[0].lower() != guessed_command:
             response = input(
-                Fore.YELLOW + f'Можливо, ви мали на увазі "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
-
+                Fore.YELLOW + f'Maybe you meant "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
             if response.lower() != 'y':
                 print(
-                    Fore.RED + 'Команду не розпізнано. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
+                    Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
                 continue
 
         command = guessed_command
