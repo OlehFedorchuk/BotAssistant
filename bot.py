@@ -19,12 +19,21 @@ def display_commands_table():
             ("close", "Close the program"),  # Close the program
         ]),
         ("Contact management", [
-            ("add", "Add contact"),  # Add a new contact
-            ("change", "Change a contact's phone"),  # Change a phone number
+            ("add", "Add contact"),  # Add a new contact   
             ("edit-name", "Edit a contact's name"),  # Edit a contact's name
             ("delete", "Delete a contact"),  # Delete a contact
             ("search", "Search for a contact"),  # Search for a contact
             ("all", "Show all contacts"),  # Display all contacts
+        ]),
+        ("Phone management", [
+            ("phone", "Show a contact's phone"),  # Show a contact's phone
+            ("edit-phone", "Edit a phone"),  # Edit a contact's phone number
+            ("remove-phone", "Remove a phone"),  # Remove a contact's phone number
+        ]),
+        ("Address management", [
+            ("add-address", "Add address"),  # Add an address to a contact
+            ("edit-address", "Edit address"),  # Edit a contact's address
+            ("remove-address", "Remove address"),  # Remove a contact's address
         ]),
         ("Note management", [
             ("add-note", "Add a note"),  # Add a note to a contact
@@ -146,15 +155,28 @@ class Birthday(Field):
 class Record:
     """
     Represents a single contact record in the address book.
-    Contains fields such as name, phones, birthday, email, and notes.
+    Contains fields such as name, phones, birthday, email, notes, and address.
     """
 
-    def __init__(self, name, email=None):
+    def __init__(self, name, email=None, address=None):
         self.name = Name(name)
         self.phones = []
         self.birthday = None
         self.note = ''
         self.email = Email(email) if email else None
+        self.address = address
+
+    def set_address(self, address):
+        """Sets the address for the contact."""
+        self.address = address
+
+    def edit_address(self, new_address):
+        """Edits the address of the contact."""
+        self.address = new_address
+
+    def remove_address(self):
+        """Removes the address from the contact."""
+        self.address = None
 
     def add_phone(self, phone):
         """Adds a phone number to the contact."""
@@ -166,8 +188,16 @@ class Record:
         self.birthday = Birthday(birthday_str)
 
     def remove_phone(self, phone):
-        """Removes a phone number from the contact."""
-        self.phones = [k for k in self.phones if k.value != phone]
+        """
+        Removes a phone number from the contact.
+        Raises an error if the phone number is not found.
+        """
+        for i, k in enumerate(self.phones):
+            if k.value == phone:
+                del self.phones[i]
+                return
+        raise ValueError(f"Phone number {phone} not found.")
+
 
     def edit_phone(self, old_phone, new_phone):
         """Edits an existing phone number."""
@@ -192,6 +222,8 @@ class Record:
 
     def remove_email(self):
         """Removes the email address from the contact."""
+        if self.email is None:
+            raise ValueError('Email is alredy removed or not set')
         self.email = None
 
     def edit_name(self, new_name):
@@ -217,13 +249,13 @@ class Record:
     def __str__(self):
         """
         Returns a string representation of the contact,
-        including name, phones, birthday, email, and notes.
+        including name, phones, birthday, email, notes, and address.
         """
-        phone_str = ', '.join(str(k)
-                              for k in self.phones) if self.phones else '📵 No phones'
+        phone_str = ', '.join(str(k) for k in self.phones) if self.phones else '📵 No phones'
         bday_str = f'🎂 Birthday:{Style.RESET_ALL}{self.birthday}' if self.birthday else '🎂 Birthday: Not set'
         note_str = f'📝 Note: {Style.RESET_ALL}{self.note}' if self.note else '📝 Note: Not set'
         email_str = f'✉️  Email:{Style.RESET_ALL}{self.email.value}' if self.email else '✉️  Email: Not set'
+        address_str = f'🏠 Address: {Style.RESET_ALL}{self.address}' if self.address else '🏠 Address: Not set'
         return (
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
             f"👤{Fore.CYAN} Contact name:{Style.RESET_ALL} {self.name} \n"
@@ -231,6 +263,7 @@ class Record:
             f"{Fore.CYAN}{bday_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{email_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{note_str}{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{address_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
         )
 
@@ -328,6 +361,55 @@ class AddressBook(UserDict):
             return Fore.YELLOW + 'List is empty' + Style.RESET_ALL
         return '\n'.join(str(record) for record in self.data.values())
 
+@exception_handler
+def add_address(book, name, address):
+    """
+    Adds an address to an existing contact.
+    Raises an error if the contact is not found.
+    """
+    record = book.find_record(name)
+    if record:
+        record.set_address(address)
+        return Fore.GREEN + f'Address added to contact {name}' + Style.RESET_ALL
+    raise KeyError
+
+
+@exception_handler
+def edit_address(book, name, new_address):
+    """
+    Edits the address of an existing contact.
+    Raises an error if the contact is not found.
+    """
+    record = book.find_record(name)
+    if record:
+        record.edit_address(new_address)
+        return Fore.GREEN + f'Address updated for contact {name}' + Style.RESET_ALL
+    raise KeyError
+
+
+@exception_handler
+def remove_address(book, name):
+    """
+    Removes the address from an existing contact.
+    Raises an error if the contact is not found.
+    """
+    record = book.find_record(name)
+    if record:
+        record.remove_address()
+        return Fore.GREEN + f'Address removed from contact {name}' + Style.RESET_ALL
+    raise KeyError
+
+@exception_handler
+def remove_phone(book, name, phone):
+    """
+    Removes a phone number from an existing contact.
+    Raises an error if the contact or phone number is not found.
+    """
+    record = book.find_record(name)
+    if record:
+        record.remove_phone(phone)
+        return Fore.GREEN + f"Phone number {phone} removed from contact {name}" + Style.RESET_ALL
+    raise KeyError("Contact not found")
 
 @exception_handler
 def add_contact(book, name, phone):
@@ -416,26 +498,37 @@ def show_note(book, name):
 
 def show_phone(book, name):
     """
-    Displays the details of a specific contact, including phone numbers.
-    Returns a message if the contact is not found.
+    Displays the phone numbers of a specific contact.
+    Returns a message if the contact or phone numbers are not found.
     """
     record = book.find_record(name)
-    return str(record) if record else Fore.YELLOW + 'Contact was not found' + Style.RESET_ALL
-
+    if record:
+        if record.phones:
+            return ', '.join(phone.value for phone in record.phones)
+        return Fore.YELLOW + 'No phone numbers found for this contact' + Style.RESET_ALL
+    return Fore.YELLOW + 'Contact was not found' + Style.RESET_ALL
 
 def search_contacts(book, query):
     """
-    Searches for contacts in the address book by name, phone number, or email.
+    Searches for contacts in the address book by name, phone number, email, or notes.
     Returns a list of matching contacts or raises an error if no matches are found.
     """
-    results = [record for record in book.data.values()
-               if query.lower() in record.name.value.lower()
-               or any(query in phone.value for phone in record.phones)
-               or (record.email and query.lower() in record.email.value.lower())]
-    if results:
-        return "\n".join(str(record) for record in results)
-    raise KeyError  # "Contact not found"
+    query_lower = query.lower()
+    results = []
 
+    for record in book.data.values():
+        name_match = query_lower in record.name.value.lower()
+        phone_match = any(query_lower in str(phone.value).lower() for phone in record.phones)
+        email_match = record.email and query_lower in record.email.value.lower()
+        note_match = query_lower in record.note.lower() if record.note else False
+
+        if name_match or phone_match or email_match or note_match:
+            results.append(str(record))
+
+    if results:
+        return "\n".join(results)
+
+    raise KeyError("Contact not found")
 
 def show_all(book):
     """
@@ -470,6 +563,20 @@ def add_birthday_to_contact(book, name, birthday_str):
     record.add_birthday(birthday_str)
     return Fore.GREEN + f'Birthday {birthday_str} added to contact {name}' + Style.RESET_ALL
 
+@exception_handler
+def remove_email(book, name):
+    """
+    Removes the email address from an existing contact.
+    Raises an error if the contact is not found or the email is already removed.
+    """
+    record = book.find_record(name)
+    if record:
+        try:
+            record.remove_email()
+            return Fore.GREEN + f"Email removed for contact {name}" + Style.RESET_ALL
+        except ValueError as e:
+            return Fore.YELLOW + f"Warning: {e}" + Style.RESET_ALL
+    raise KeyError("Contact not found")
 
 def show_birthday(book, name):
     """
@@ -550,11 +657,19 @@ def main():
 
     # List of known commands supported by the bot
     known_commands = [
-        "hello", "add", "change", "phone", "search",
-        "edit_name", "add-note", "edit-note", "remove-note",
-        "all", "delete", "add-birthday", "show-birthday",
+        "hello", 
+        "add", "search",
+        "edit-name", 
+        "add-note", "edit-note", "remove-note","show-note",
+        "all", 
+        "delete", 
+        "add-birthday", "show-birthday",
         "add-email", "edit-email", "remove-email",
-        "birthdays", "show-note", "exit", "close"
+        "add-address", "edit-address", "remove-address",
+        "birthdays", 
+        "edit-phone", "remove-phone",
+        "phone",
+        "exit", "close"
     ]
 
     # Display a welcome message and the list of available commands
@@ -572,7 +687,11 @@ def main():
             # Handle empty input
             print(Fore.YELLOW + 'Empty input. Please try again.' + Style.RESET_ALL)
             continue
-
+        # Check for exact match with "exit" or "close"
+        if user_input.lower() in ('exit', 'close'):
+            save_data(book)  # Save the address book data before exiting
+            print('Goodbye')
+            break
         #  Guess the command and extract arguments
         guessed_command, args, is_confident = guess_command(
             user_input, known_commands)
@@ -605,7 +724,7 @@ def main():
             print("Hello! How can I help you?" + Style.RESET_ALL)
         elif command == 'add' and len(args) >= 2:
             print(add_contact(book, args[0], args[1]))
-        elif command == 'change' and len(args) >= 3:
+        elif command == 'edit-phone' and len(args) >= 3:
             print(change_contact(book, args[0], args[1], args[2]))
         elif command == 'edit-name' and len(args) >= 2:
             print(edit_name(book, args[0], args[1]))
@@ -631,6 +750,8 @@ def main():
             print(show_birthday(book, args[0]))
         elif command == 'birthdays':
             print(upcoming_birthday(book))
+        elif command == 'remove-phone' and len(args) >= 2:
+            print(remove_phone(book, args[0], args[1]))
         elif command == 'add-email' and len(args) >= 2:
             record = book.find_record(args[0])
             if record:
@@ -656,14 +777,14 @@ def main():
                 print(
                     Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
         elif command == 'remove-email' and len(args) >= 1:
-            record = book.find_record(args[0])
-            if record:
-                record.remove_email()
-                print(Fore.GREEN +
-                      f"Email removed for contact {args[0]}" + Style.RESET_ALL)
-            else:
-                print(
-                    Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
+            print(remove_email(book, args[0]))
+            
+        elif command == 'add-address' and len(args) >= 2:
+            print(add_address(book, args[0], ' '.join(args[1:])))
+        elif command == 'edit-address' and len(args) >= 2:
+            print(edit_address(book, args[0], ' '.join(args[1:])))
+        elif command == 'remove-address' and len(args) >= 1:
+            print(remove_address(book, args[0]))
         else:
             print(
                 Fore.RED + 'Unknown command or insufficient arguments. Please try again' + Style.RESET_ALL)
