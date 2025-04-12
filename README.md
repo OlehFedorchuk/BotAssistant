@@ -22,23 +22,23 @@ A powerful and interactive **console assistant** written in Python. This project
 ### ✅ Prerequisites
 
 - Python 3.9+
-- Install dependencies:
-
-```bash
-pip install colorama
-```
 
 ---
 
-### ▶️ Running the App
+### 🧰 Setup Virtual Environment
 
-Run the bot from your terminal:
+To isolate project dependencies, it’s recommended to use a virtual environment:
 
 ```bash
-python assistant.py
-```
+# Create virtual environment
+python -m venv venv
 
-You’ll be greeted with a colorful table of available commands.
+# Activate on Windows
+venv\Scripts\activate
+
+# Activate on macOS/Linux
+source venv/bin/activate
+```
 
 ---
 
