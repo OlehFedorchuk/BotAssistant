@@ -41,6 +41,13 @@ def display_commands_table():
             ("add-email", "Додати електронну пошту"),
             ("edit-email", "Редагувати електронну пошту"),
             ("remove-email", "Видалити електронну пошту")
+        ]),
+        ("Calling commands to work with tags", [
+            ("add-tag", "add a tag to a contact"),
+            ("remove-tag", "remove a tag from a contact"),
+            ("show-tags", "show existing tags"),
+            ("search-tag", "find a contact by tag"),
+            ("sort-notes", "sorts notes by tags")
         ])
     ]
 
@@ -58,6 +65,34 @@ def display_commands_table():
             print(format_row(cmd, desc))
         print(Fore.CYAN + "." * 50 + Style.RESET_ALL)
         print("\n")
+
+
+def guess_command(user_input, know_commands):
+    '''
+    Розширенний автопідбір: повертає список можливих команд, що містять введений текст
+    або схожі на нього
+    '''
+    tokens = user_input.strip().split()
+    if not tokens:
+        return None, []
+
+    input_cmd = tokens[0].lower()
+    args = tokens[1:]
+
+    if input_cmd in know_commands:
+        return input_cmd, args
+
+    contains_matches = [cmd for cmd in know_commands if input_cmd in cmd]
+
+    unclear_matches = difflib.get_close_matches(input_cmd, know_commands, n=len(know_commands),
+                                                cutoff=0.5)
+
+    all_matches = list(dict.fromkeys(contains_matches + unclear_matches))
+
+    if all_matches:
+        return all_matches, args
+
+    return None, args
 
 
 def validate_phone(value):
@@ -158,6 +193,7 @@ class Record:
         self.birthday = None
         self.note = ''
         self.email = Email(email) if email else None
+        self.tags = set()
 
     def add_phone(self, phone):
         # Validation after creating Phone object
@@ -206,6 +242,15 @@ class Record:
     def show_note(self):
         return self.note
 
+    def add_tags(self, *tags):
+        self.tags.update(tag.lower() for tag in tags)
+
+    def remove_tag(self, tag):
+        self.tags.discard(tag.lower())
+
+    def show_tags(self):
+        return ', '.join(sorted(self.tags)) if self.tags else "No tags"
+
     def __str__(self):
 
         phone_str = ', '.join(str(k)
@@ -216,6 +261,7 @@ class Record:
                               for k in self.phones) if self.phones else '📵 No phones'
         bday_str = f'🎂 Birthday: {Style.RESET_ALL} {self.birthday}' if self.birthday else '🎂 Birthday: Not set'
         email_str = f'✉️  Email: {self.email.value}' if self.email else '✉️  Email: Not set'
+        tags_str = f'Tags: {self.show_tags()}' if self.tags else 'Tags: Not set'
         return (
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
             f"👤{Fore.CYAN} Contact name:{Style.RESET_ALL} {self.name}\n"
@@ -223,6 +269,7 @@ class Record:
             f"{Fore.CYAN}{bday_str}\n"
             f"{Fore.CYAN}{email_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{note_str}{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{tags_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
         )
 # ------- add_contact, change_contact, show_phone, search_contacts, show_all, delete_contact ------------------------
@@ -416,6 +463,85 @@ def upcoming_birthday(book):
             f'{record.name.value}:{record.birthday}(in {days_left} days)')
     return '\n'.join(lines)
 
+
+def search_notes(book, query):
+    '''
+    search for contacts with tags
+    '''
+    results = []
+    for record in book.data.values():
+        note_text = record.note.lower()
+        tag_list = [t.lower() for t in record.tags]
+        if query.lower() in note_text or query.lower() in ' '.join(tag_list):
+            results.append(record)
+
+    if results:
+        return '\n'.join(str(r) for r in results)
+    return Fore.YELLOW + 'No tags found matching your query' + Style.RESET_ALL
+
+
+@exception_handler
+def add_tags(book, name, *tags):
+    '''
+    Adding tags to contact list, tags are not duplicated
+    '''
+    record = book.find_record(name)
+    if not record:
+        raise KeyError
+    record.add_tags(*tags)
+    return Fore.GREEN + f"Tags added to {name}: {', '.join(tags)}" + Style.RESET_ALL
+
+
+@exception_handler
+def remove_tags(book, name, tag):
+    '''
+    Deleting tegs from contacts list, if there are any tegs
+    '''
+    record = book.find_record(name)
+    if not record:
+        raise KeyError
+    if tag.lower() not in record.tags:
+        return Fore.YELLOW + f"Tag '{tag}' not found for {name}" + Style.RESET_ALL
+    record.remove_tag(tag)
+    return Fore.GREEN + f"Tag '{tag}' removed form {name}" + Style.RESET_ALL
+
+
+@exception_handler
+def show_tags(book, name):
+    record = book.find_record(name)
+    if not record:
+        raise KeyError
+    return f"Tags for {name}: {record.show_tags()}"
+
+
+@exception_handler
+def search_by_tag(book, tag):
+    tag = tag.lower()
+    result = [r for r in book.data.values() if tag in r.tags]
+    if result:
+        return "\n".join(str(r) for r in result)
+    return Fore.YELLOW + f"No contacts found with tag '{tag}'"
+
+
+def sort_notes_by_tags(book):
+    '''
+    Sorts notes by tags, displaying a list of contacts grouped by tegs
+    '''
+    tag_dict = {}
+    for record in book.data.values():
+        for tag in record.tags:
+            tag_dict.setdefault(tag, []).append(record)
+
+    if not tag_dict:
+        return Fore.YELLOW + "No tags found in the notebook" + Style.RESET_ALL
+
+    output = []
+    for tag in sorted(tag_dict):
+        output.append(Fore.BLUE + f"\nTag: #{tag}" + Style.RESET_ALL)
+        for record in tag_dict[tag]:
+            note = record.note if record else "No note"
+            output.append(f"- {record.name.value}: {note}")
+    return '\n'.join(output)
 # ============ Added functions of saving and personalization`` ==================================
 
 
@@ -424,55 +550,36 @@ def save_data(book, filename='addressbook.pkl'):
         pickle.dump(book, f)
 
 
-def load_datа(filename='addressbook.pkl'):
+def load_data(filename='addressbook.pkl'):
     try:
         with open(filename, 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
         return AddressBook()
 
-# -------------------------- Функція для визначення команди -----------------------------------------------
-
-
-def guess_command(user_input, known_commands):
-    """
-    За допомогою difflib.get_close_matches шукаємо найближчу відповідність введеної команди.
-    Якщо знайдено схожу команду, повертаємо її, інакше повертаємо None.
-    """
-    # Отримуємо перший токен як потенційну команду
-    tokens = user_input.strip().split()
-    if not tokens:
-        return None, []
-    input_cmd = tokens[0].lower()
-
-    # Якщо введена команда точно збігається з однією з відомих, повертаємо її
-    if input_cmd in known_commands:
-        return input_cmd, tokens[1:]
-
-    # Використовуємо difflib для пошуку найближчої команди
-    close_matches = difflib.get_close_matches(
-        input_cmd, known_commands, n=1, cutoff=0.6)
-    if close_matches:
-        return close_matches[0], tokens[1:]
-    return None, tokens[1:]
-
 
 def main():
     # book = AddressBook()
-    book = load_datа()  # Download at the start
+    book = load_data()  # Download at the start
 
 # Список доступних команд
     known_commands = [
         "hello", "add", "change", "phone", "search",
-        "edit_name", "add-note", "edit-note", "remove-note",
+        "edit-name", "add-note", "edit-note", "remove-note",
         "all", "delete", "add-birthday", "show-birthday",
         "add-email", "edit-email", "remove-email",
-        "birthdays", "show-note", "exit", "close"
+        "birthdays", "show-note", "add-tag", "remove-tag",
+        "show-tags", "search-tag", "sort-notes", "exit", "close"
     ]
 
     print(Fore.BLUE + 'Hi! I am a console assistant bot' + Style.RESET_ALL)
     print()
     display_commands_table()
+
+    suggestion_dict = {}
+    pending_command = None
+    last_arg = []
+
     while True:
 
         user_input = input(Fore.CYAN + "Enter command:" + Style.RESET_ALL)
@@ -482,27 +589,62 @@ def main():
             print(Fore.YELLOW + 'Empty input. Please try again.' + Style.RESET_ALL)
             continue
 
-        # Спроба визначити команду за допомогою помічника
-        guessed_command, args = guess_command(user_input, known_commands)
+        # === Step 1 =====
+        if pending_command:
+            args = user_input.strip().split()
+            command = pending_command
+            pending_command = None
+            print(Fore.MAGENTA + f"[DEBAG] Обрано команду: {command}")
+            print(f"[DEBAG] Аргумент (args): {args}" + Style.RESET_ALL)
 
-        if guessed_command is None:
-            print(
-                Fore.RED + 'Невідома команда. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
-            continue
-
-        # Якщо введена команда не співпадає з тим, що ввів користувач, питаємо підтвердження
-        tokens = user_input.strip().split()
-
-        if tokens[0].lower() != guessed_command:
-            response = input(
-                Fore.YELLOW + f'Можливо, ви мали на увазі "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
-
-            if response.lower() != 'y':
+        # === Step 2 ======
+        elif suggestion_dict:
+            parts = user_input.strip().split()
+            if parts and parts[0].isdigit():
+                selection = int(parts[0])
+                if selection in suggestion_dict:
+                    command = suggestion_dict[selection]
+                    args = parts[1:] if len(parts) > 1 else last_arg
+                    suggestion_dict = {}
+                    pending_command = command
+                    print(Fore.MAGENTA + f'[DEBUG] Обрано команду: {pending_command}' +
+                          Style.RESET_ALL)
+                    print(Fore.CYAN +
+                          f"Введіть аргументи для команди '{pending_command}':")
+                else:
+                    print(Fore.RED + "Incorrect number" + Style.RESET_ALL)
+                    continue
+            else:
                 print(
-                    Fore.RED + 'Команду не розпізнано. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
+                    Fore.RED + "Please enter a valid selection number" + Style.RESET_ALL)
                 continue
 
-        command = guessed_command
+        # Спроба визначити команду за допомогою помічника
+        else:
+            guess_result, args = guess_command(user_input, known_commands)
+
+            if guess_result is None:
+                print(
+                    Fore.RED + 'Невідома команда. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
+                continue
+
+            if isinstance(guess_result, list):
+                suggestion_dict = {i + 1: cmd for i,
+                                   cmd in enumerate(guess_result)}
+                last_arg = user_input.strip().split()[1:]
+                pending_command = None
+                print(Fore.MAGENTA + "[DEBUG] Сформований словник підсказка:")
+                for key, val in suggestion_dict.items():
+                    print(f'{key}: {val}')
+                print(Style.RESET_ALL)
+
+                print(Fore.YELLOW + "Можливі команди:")
+                for key, val in suggestion_dict.items():
+                    print(f"{key}.{val}")
+                pending_command = None
+                continue
+            else:
+                command = guess_result
 
         if command in ('exit', 'close'):
             save_data(book)  # saving data before going out
@@ -538,6 +680,16 @@ def main():
             print(show_birthday(book, args[0]))
         elif command == 'birthdays':
             print(upcoming_birthday(book))
+        elif command == 'add-tag' and len(args) >= 2:
+            print(add_tags(book, args[0], *args[1:]))
+        elif command == 'remove-tag' and len(args) >= 2:
+            print(remove_tags(book, args[0], args[1]))
+        elif command == 'show-tags' and len(args) >= 1:
+            print(show_tags(book, args[0]))
+        elif command == 'search-tag' and len(args) >= 1:
+            print(search_by_tag(book, args[0]))
+        elif command == 'sort-notes':
+            print(sort_notes_by_tags(book))
         elif command == 'add-email' and len(args) >= 2:
             record = book.find_record(args[0])
             if record:
