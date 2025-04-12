@@ -8,8 +8,6 @@ from colorama import init, Fore, Back, Style
 init(autoreset=True)
 
 # Function to display a table of available commands
-
-
 def display_commands_table():
     # Define the list of commands grouped by categories
     commands = [
@@ -762,15 +760,13 @@ def main():
                 except ValueError as e:
                     print(Fore.RED + f"Error: {e}" + Style.RESET_ALL)
             else:
-                print(
-                    Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
+                print(Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
         elif command == 'edit-email' and len(args) >= 2:
             record = book.find_record(args[0])
             if record:
                 try:
                     record.edit_email(args[1])
-                    print(
-                        Fore.GREEN + f"Email {args[1]} updated for contact {args[0]}" + Style.RESET_ALL)
+                    print(Fore.GREEN + f"Email {args[1]} updated for contact {args[0]}" + Style.RESET_ALL)
                 except ValueError as e:
                     print(Fore.RED + f"Error: {e}" + Style.RESET_ALL)
             else:
