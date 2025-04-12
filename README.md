@@ -22,50 +22,53 @@ A powerful and interactive **console assistant** written in Python. This project
 ### ✅ Prerequisites
 
 - Python 3.9+
-- Install dependencies:
-
-```bash
-pip install colorama
-```
 
 ---
 
-### ▶️ Running the App
+### 🧰 Setup Virtual Environment
 
-Run the bot from your terminal:
+To isolate project dependencies, it’s recommended to use a virtual environment:
 
 ```bash
-python assistant.py
-```
+# Create virtual environment
+python -m venv venv
 
-You’ll be greeted with a colorful table of available commands.
+# Activate on Windows
+venv\Scripts\activate
+
+# Activate on macOS/Linux
+source venv/bin/activate
+```
 
 ---
 
 ## 🛠️ Available Commands
 
-| Category  | Command         | Description                   |
-| --------- | --------------- | ----------------------------- |
-| General   | `hello`         | Greet the bot                 |
-|           | `exit`, `close` | Exit and save the assistant   |
-| Contacts  | `add`           | Add new contact               |
-|           | `change`        | Edit a contact’s phone number |
-|           | `edit-name`     | Change contact name           |
-|           | `delete`        | Delete a contact              |
-|           | `search`        | Search by name or phone       |
-|           | `all`           | Show all contacts             |
-| Notes     | `add-note`      | Add a note to a contact       |
-|           | `edit-note`     | Edit existing note            |
-|           | `remove-note`   | Remove contact’s note         |
-|           | `show-note`     | Display contact’s note        |
-| Birthdays | `add-birthday`  | Add a birthday to a contact   |
-|           | `show-birthday` | Show a contact’s birthday     |
-|           | `birthdays`     | View upcoming birthdays       |
-| Emails    | `add-email`     | Add email to contact          |
-|           | `edit-email`    | Change email                  |
-|           | `remove-email`  | Remove email                  |
-
----
+| Category  | Command         | Description                   | Example Parameters           |
+| --------- | --------------- | ----------------------------- | ---------------------------- |
+| General   | `hello`         | Greet the bot                 |                              |
+|           | `exit`, `close` | Exit and save the assistant   |                              |
+| Contacts  | `add`           | Add new contact               | name                         |
+|           | `edit-name`     | Change contact name           | old name new name            |
+|           | `delete`        | Delete a contact              | name                         |
+|           | `search`        | Search by name or phone       | name, phone, email, note     | 
+|           | `all`           | Show all contacts             | no input required            |
+| Notes     | `add-note`      | Add a note to a contact       | name note                    |
+|           | `edit-note`     | Edit existing note            | name new note                |
+|           | `remove-note`   | Remove contact’s note         | name containing note         |
+|           | `show-note`     | Display contact’s note        | name                         |
+| Birthdays | `add-birthday`  | Add a birthday to a contact   | name date of birth           |
+|           | `show-birthday` | Show a contact’s birthday     | name                         |
+|           | `birthdays`     | View upcoming birthdays       | no input required            |
+| Emails    | `add-email`     | Add email to contact          | name email                   |
+|           | `edit-email`    | Change email                  | name new email               |
+|           | `remove-email`  | Remove email                  | name                         |
+| Phone     | `phone`         | Show a contact’s phone        | name                         |
+|           | `edit-phone`    | Edit a contact’s phone number | name old phone new phone     |
+|           | `remove-phone`  | Remove a phone                | name phone                   |
+| Address   | `add-address`   | Add address                   | name address                 |
+|           | `edit-address`  | Edit address                  | name old address new address |
+|           | `remove-address`| Remove address                | name address                 |
 
 ## 💾 Data Persistence
 
