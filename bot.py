@@ -3,9 +3,12 @@ from datetime import datetime
 import pickle
 import re
 import difflib
+from colorama import init, Fore, Back, Style
 
 
-from colorama import Fore, Back, Style
+# Ініціалізація Colorama
+init(autoreset=True)
+
 
 def display_commands_table():
     """Відображає список доступних команд у табличному вигляді"""
@@ -42,16 +45,20 @@ def display_commands_table():
     ]
 
     # Лямбда для форматування рядків
-    format_row = lambda cmd, desc: f"{Fore.GREEN}{cmd:<15}{Fore.WHITE}{desc}{Style.RESET_ALL}"
+    def format_row(
+        cmd, desc): return f"{Fore.GREEN}{cmd:<15}{Fore.WHITE}{desc}{Style.RESET_ALL}"
 
     # Вивід кожної категорії команд
     for category, cmds in commands:
-        print(Back.LIGHTCYAN_EX + Fore.WHITE + f"{category}".center(50) + Style.RESET_ALL)
+        print(Back.LIGHTCYAN_EX + Fore.WHITE +
+              f"{category}".center(50) + Style.RESET_ALL)
         print(Fore.CYAN + "." * 50 + Style.RESET_ALL)
         for cmd, desc in cmds:
-            print(format_row(cmd, desc))  # Використання лямбда-функції для форматування
+            # Використання лямбда-функції для форматування
+            print(format_row(cmd, desc))
         print(Fore.CYAN + "." * 50 + Style.RESET_ALL)
         print("\n")
+
 
 def validate_phone(value):
     """
@@ -142,7 +149,6 @@ class Birthday(Field):
         return self.value.strftime('%d.%m.%Y')
 
 
-
 class Record:
     """Class for sorting the information about a contact, including name and phone list"""
 
@@ -152,7 +158,6 @@ class Record:
         self.birthday = None
         self.note = ''
         self.email = Email(email) if email else None
-
 
     def add_phone(self, phone):
         # Validation after creating Phone object
@@ -204,22 +209,22 @@ class Record:
     def __str__(self):
 
         phone_str = ', '.join(str(k)
-        for k in self.phones) if self.phones else '📵  No phones'
+                              for k in self.phones) if self.phones else '📵  No phones'
         bday_str = f'🎂 Birthday: {self.birthday}' if self.birthday else ''
         note_str = f'📝 Note: {self.note}' if self.note else '📝 Note: Not set'
         phone_str = ', '.join(str(k)
-        for k in self.phones) if self.phones else '📵 No phones'
+                              for k in self.phones) if self.phones else '📵 No phones'
         bday_str = f'🎂 Birthday: {Style.RESET_ALL} {self.birthday}' if self.birthday else '🎂 Birthday: Not set'
         email_str = f'✉️  Email: {self.email.value}' if self.email else '✉️  Email: Not set'
         return (
-        f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
-        f"👤{Fore.CYAN} Contact name:{Style.RESET_ALL} {self.name}\n"
-        f"📞{Fore.CYAN} Phones:{Style.RESET_ALL} {phone_str}\n"
-        f"{Fore.CYAN}{bday_str}\n"
-        f"{Fore.CYAN}{email_str}{Style.RESET_ALL}\n"
-        f"{Fore.CYAN}{note_str}{Style.RESET_ALL}\n"
-        f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
-    )
+            f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
+            f"👤{Fore.CYAN} Contact name:{Style.RESET_ALL} {self.name}\n"
+            f"📞{Fore.CYAN} Phones:{Style.RESET_ALL} {phone_str}\n"
+            f"{Fore.CYAN}{bday_str}\n"
+            f"{Fore.CYAN}{email_str}{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{note_str}{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
+        )
 # ------- add_contact, change_contact, show_phone, search_contacts, show_all, delete_contact ------------------------
 
 
@@ -236,7 +241,8 @@ class Email:
         if self.validate_email(email):
             self._value = email
         else:
-            raise Fore.RED + ValueError(f"Невірний формат email: {email}") + Style.RESET_ALL
+            raise Fore.RED + \
+                ValueError(f"Невірний формат email: {email}") + Style.RESET_ALL
 
     @staticmethod
     def validate_email(email: str) -> bool:
@@ -353,7 +359,8 @@ def show_phone(book, name):
 def search_contacts(book, query):
     results = [record for record in book.data.values(
     ) if query.lower() in record.name.value.lower()
-        or any(query in phone.value for phone in record.phones)]
+        or any(query in phone.value for phone in record.phones)
+        or (record.email and query.lower() in record.email.value.lower())]
     if results:
         return "\n".join(str(record) for record in results)
     raise KeyError  # "Contact not found"
@@ -411,6 +418,7 @@ def upcoming_birthday(book):
 
 # ============ Added functions of saving and personalization`` ==================================
 
+
 def save_data(book, filename='addressbook.pkl'):
     with open(filename, 'wb') as f:
         pickle.dump(book, f)
@@ -424,6 +432,8 @@ def load_datа(filename='addressbook.pkl'):
         return AddressBook()
 
 # -------------------------- Функція для визначення команди -----------------------------------------------
+
+
 def guess_command(user_input, known_commands):
     """
     За допомогою difflib.get_close_matches шукаємо найближчу відповідність введеної команди.
@@ -454,10 +464,10 @@ def main():
 # Список доступних команд
     known_commands = [
         "hello", "add", "change", "phone", "search",
-        "edit_name", "add-note", "edit-note", "remove-note", 
+        "edit_name", "add-note", "edit-note", "remove-note",
         "all", "delete", "add-birthday", "show-birthday",
         "add-email", "edit-email", "remove-email",
-        "birthdays","show-note", "exit", "close"
+        "birthdays", "show-note", "exit", "close"
     ]
 
     print(Fore.BLUE + 'Hi! I am a console assistant bot' + Style.RESET_ALL)
@@ -465,7 +475,6 @@ def main():
     display_commands_table()
     while True:
 
-        
         user_input = input(Fore.CYAN + "Enter command:" + Style.RESET_ALL)
         print()
 
@@ -477,17 +486,20 @@ def main():
         guessed_command, args = guess_command(user_input, known_commands)
 
         if guessed_command is None:
-            print(Fore.RED + 'Невідома команда. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
+            print(
+                Fore.RED + 'Невідома команда. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
             continue
 
         # Якщо введена команда не співпадає з тим, що ввів користувач, питаємо підтвердження
         tokens = user_input.strip().split()
 
         if tokens[0].lower() != guessed_command:
-            response = input(Fore.YELLOW + f'Можливо, ви мали на увазі "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
+            response = input(
+                Fore.YELLOW + f'Можливо, ви мали на увазі "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
 
             if response.lower() != 'y':
-                print(Fore.RED + 'Команду не розпізнано. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
+                print(
+                    Fore.RED + 'Команду не розпізнано. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
                 continue
 
         command = guessed_command
@@ -531,30 +543,37 @@ def main():
             if record:
                 try:
                     record.set_email(args[1])
-                    print(Fore.GREEN + f"Email {args[1]} додано до контакту {args[0]}" + Style.RESET_ALL)
+                    print(
+                        Fore.GREEN + f"Email {args[1]} додано до контакту {args[0]}" + Style.RESET_ALL)
                 except ValueError as e:
-                    print( Fore.RED + f"Помилка: {e}" + Style.RESET_ALL)
+                    print(Fore.RED + f"Помилка: {e}" + Style.RESET_ALL)
             else:
-                print(Fore.RED + f"Контакт {args[0]} не знайдено" + Style.RESET_ALL)
+                print(
+                    Fore.RED + f"Контакт {args[0]} не знайдено" + Style.RESET_ALL)
         elif command == 'edit-email' and len(args) >= 2:
             record = book.find_record(args[0])
             if record:
                 try:
                     record.edit_email(args[1])
-                    print(Fore.GREEN + f"Email {args[1]} оновлено для контакту {args[0]}" + Style.RESET_ALL)
+                    print(
+                        Fore.GREEN + f"Email {args[1]} оновлено для контакту {args[0]}" + Style.RESET_ALL)
                 except ValueError as e:
                     print(Fore.RED + f"Помилка: {e}" + Style.RESET_ALL)
             else:
-                print(Fore.RED + f"Контакт {args[0]} не знайдено" + Style.RESET_ALL)
+                print(
+                    Fore.RED + f"Контакт {args[0]} не знайдено" + Style.RESET_ALL)
         elif command == 'remove-email' and len(args) >= 1:
             record = book.find_record(args[0])
             if record:
                 record.remove_email()
-                print(Fore.GREEN + f"Email видалено для контакту {args[0]}" + Style.RESET_ALL)
+                print(
+                    Fore.GREEN + f"Email видалено для контакту {args[0]}" + Style.RESET_ALL)
             else:
-                print(Fore.RED + f"Контакт {args[0]} не знайдено" + Style.RESET_ALL)
+                print(
+                    Fore.RED + f"Контакт {args[0]} не знайдено" + Style.RESET_ALL)
         else:
-            print( Fore.RED + 'Unknown command or insufficient arguments. Please try again'+ Style.RESET_ALL)
+            print(
+                Fore.RED + 'Unknown command or insufficient arguments. Please try again' + Style.RESET_ALL)
 
 
 if __name__ == '__main__':
