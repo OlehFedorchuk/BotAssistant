@@ -627,23 +627,34 @@ def guess_command(user_input, known_commands, threshold=0.8):
     """
     tokens = user_input.strip().split()
     if not tokens:
-        return None, [], False
+        return None, [], False  # Handle empty input gracefully
+
     input_cmd = tokens[0].lower()
+    args = tokens[1:]
 
+    # Exact match
     if input_cmd in known_commands:
-        return input_cmd, tokens[1:], True
+        return input_cmd, args, True
 
-    best_match = None
-    highest_ratio = 0.0
-
+    # Fuzzy matching for similar commands
+    matches = []
     for cmd in known_commands:
         ratio = difflib.SequenceMatcher(None, input_cmd, cmd).ratio()
-        if ratio > highest_ratio:
-            highest_ratio = ratio
-            best_match = cmd
+        if ratio >= threshold:
+            matches.append((cmd, ratio))
 
-    return best_match if highest_ratio >= 0.6 else None, tokens[1:], highest_ratio >= threshold
+    # Sort matches by similarity (highest first)
+    matches.sort(key=lambda x: x[1], reverse=True)
 
+    if matches:
+        # If there's only one confident match and it's above a stricter threshold
+        if len(matches) == 1 and matches[0][1] >= 0.9:
+            return matches[0][0], args, True
+        # Otherwise, return the top matches for user confirmation
+        return [match[0] for match in matches], args, False
+
+    # No matches found
+    return None, args, False
 
 def main():
     """
@@ -690,27 +701,35 @@ def main():
             save_data(book)  # Save the address book data before exiting
             print('Goodbye')
             break
-        #  Guess the command and extract arguments
-        guessed_command, args, is_confident = guess_command(
-            user_input, known_commands)
 
-        if guessed_command is None:
-            print(
-                Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
+        # Guess the command and extract arguments
+        guess_result, args, is_confident = guess_command(user_input, known_commands)
+
+        if guess_result is None:
+            print(Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
             continue
 
-        tokens = user_input.strip().split()
-
-        if not is_confident and tokens[0].lower() != guessed_command:
-            response = input(
-                Fore.YELLOW + f'Maybe you meant "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
-            if response.lower() != 'y':
-                print(
-                    Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
+        if isinstance(guess_result, list):
+            # If multiple suggestions are returned
+            print(Fore.YELLOW + "Did you mean one of these commands?")
+            for i, cmd in enumerate(guess_result, 1):
+                print(f"{i}. {cmd}")
+            choice = input(Fore.CYAN + "Enter the number of the correct command, or press Enter to cancel: " + Style.RESET_ALL)
+            if choice.isdigit() and 1 <= int(choice) <= len(guess_result):
+                guessed_command = guess_result[int(choice) - 1]
+            else:
+                print(Fore.RED + "Command selection canceled. Please try again." + Style.RESET_ALL)
                 continue
-
+        elif not is_confident:
+            # If the match is not confident, ask for confirmation
+            response = input(Fore.YELLOW + f'Maybe you meant "{guess_result}"? (y/n): ' + Style.RESET_ALL)
+            if response.lower() != 'y':
+                print(Fore.RED + "Command canceled. Please try again." + Style.RESET_ALL)
+                continue
+        else:
+            guessed_command = guess_result
+            
         command = guessed_command
-
         # Handle the "exit" and "close" commands to terminate the program
         if command in ('exit', 'close'):
             save_data(book)  # Save the address book data before exiting
