@@ -11,6 +11,7 @@ A powerful and interactive **console assistant** written in Python. This project
 - 📧 **Email Management**: Add, edit, and remove email addresses.
 - 🎂 **Birthday Tracker**: Save birthdays and get notifications for upcoming ones.
 - 📝 **Notes System**: Attach and manage notes for each contact.
+- 🏠 **Address Management**: Add, edit, and remove addresses for contacts.
 - 💾 **Auto Save**: Data is automatically saved and loaded using `pickle`.
 - 💡 **Command Suggestions**: Mistyped a command? The bot suggests the closest match!
 - 🎨 **Colorful UI**: Uses `colorama` for terminal UI highlights.
@@ -39,7 +40,22 @@ venv\Scripts\activate
 # Activate on macOS/Linux
 source venv/bin/activate
 ```
+---
 
+### 📥 Install Dependencies
+
+This project relies on the following Python libraries:
+
+- **colorama**: For colorful terminal output.
+- **difflib**: For fuzzy matching of commands.
+- **pickle**: For saving and loading data.
+- **re**: For validating email formats.
+
+After setting up the virtual environment, install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
 ---
 
 ## 🛠️ Available Commands
@@ -48,7 +64,7 @@ source venv/bin/activate
 | --------- | --------------- | ----------------------------- | ---------------------------- |
 | General   | `hello`         | Greet the bot                 |                              |
 |           | `exit`, `close` | Exit and save the assistant   |                              |
-| Contacts  | `add`           | Add new contact               | name                         |
+| Contacts  | `add`           | Add new contact               | name phone                   |
 |           | `edit-name`     | Change contact name           | old name new name            |
 |           | `delete`        | Delete a contact              | name                         |
 |           | `search`        | Search by name or phone       | name, phone, email, note     | 
@@ -98,6 +114,62 @@ The app validates:
 ```
 bot.py         # Main application file
 addressbook.pkl      # Data saved automatically here
+```
+
+---
+
+## 📖 Examples
+
+### Add a new contact
+```bash
+> add John 123456789
+Contact John with number 123456789 has been added
+```
+
+### Edit a contact's phone number
+```bash
+> edit-phone John 123456789 987654321
+Contact John updated
+```
+
+### Add a note to a contact
+```bash
+> add-note John "This is a note for John"
+Note added to contact John
+```
+
+### Show all contacts
+```bash
+> all
+👤 Contact name: John
+📞 Phones: 987654321
+📝 Note: This is a note for John
+```
+
+### Search for a contact
+```bash
+> search John
+👤 Contact name: John
+📞 Phones: 987654321
+📝 Note: This is a note for John
+```
+
+### Delete a contact
+```bash
+> delete John
+Contact John was deleted
+```
+
+### Add a birthday to a contact
+```bash
+> add-birthday John 01.01.1990
+Birthday 01.01.1990 added to contact John
+```
+
+### Show upcoming birthdays
+```bash
+> birthdays
+John: 01.01.1990 (in 5 days)
 ```
 
 ---
