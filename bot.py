@@ -39,6 +39,13 @@ def display_commands_table():
             ("remove-note", "Remove a note"),  # Remove a note
             ("show-note", "Show a note"),  # Display a note
         ]),
+        ("Tag management", [
+            ("add-tag", "Add a tag to a note"),  # Add a tag to a note
+            ("remove-tag", "Remove a tag from a note"),  # Remove a tag from a note
+            ("show-tags", "Show all tags of a note"),  # Show all tags of a note
+            ("search-tag", "Search for contacts with a specific tag"),  # Search for contacts with a specific tag
+            ("all-tags", "Show all unique tags"),  # Show all unique tags
+        ]),
         ("Birthday management", [
             ("add-birthday", "Add a birthday"),  # Add a birthday to a contact
             ("show-birthday", "Show a birthday"),  # Show a contact's birthday
@@ -150,6 +157,11 @@ class Birthday(Field):
         return self.value.strftime('%d.%m.%Y')
 
 
+class Tag(Field):
+    def __init__(self, value):
+        super().__init__(value)
+
+
 class Record:
     """
     Represents a single contact record in the address book.
@@ -161,6 +173,7 @@ class Record:
         self.phones = []
         self.birthday = None
         self.note = ''
+        self.tags = set()
         self.email = Email(email) if email else None
         self.address = address
 
@@ -244,16 +257,33 @@ class Record:
         """Returns the note of the contact."""
         return self.note
 
+    def add_tag(self, tag):
+        """Adds a tag to the note"""
+        self.tags.add(Tag(tag))
+
+    def remove_tag(self, tag):
+        """Removes a tag from the note"""
+        self.tags = {t for t in self.tags if t.value != tag}
+
+    def get_tags(self):
+        """Returns a list of note tags"""
+        return [tag.value for tag in self.tags]
+
+    def has_tag(self, tag):
+        """Checks if the note has a specific tag"""
+        return any(t.value == tag for t in self.tags)
+
     def __str__(self):
         """
         Returns a string representation of the contact,
-        including name, phones, birthday, email, notes, and address.
+        including name, phones, birthday, email, notes, tags, and address.
         """
         phone_str = ', '.join(str(k) for k in self.phones) if self.phones else '📵 No phones'
         bday_str = f'🎂 Birthday:{Style.RESET_ALL}{self.birthday}' if self.birthday else '🎂 Birthday: Not set'
         note_str = f'📝 Note: {Style.RESET_ALL}{self.note}' if self.note else '📝 Note: Not set'
         email_str = f'✉️  Email:{Style.RESET_ALL}{self.email.value}' if self.email else '✉️  Email: Not set'
         address_str = f'🏠 Address: {Style.RESET_ALL}{self.address}' if self.address else '🏠 Address: Not set'
+        tags_str = f'🏷️ Tags: {Style.RESET_ALL}{", ".join(self.get_tags())}' if self.tags else '🏷️ Tags: No tags'
         return (
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
             f"👤{Fore.CYAN} Contact name:{Style.RESET_ALL} {self.name} \n"
@@ -261,6 +291,7 @@ class Record:
             f"{Fore.CYAN}{bday_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{email_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{note_str}{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{tags_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{address_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
         )
@@ -316,6 +347,29 @@ class AddressBook(UserDict):
         """Deletes a contact record by name."""
         if name in self.data:
             del self.data[name]
+
+    def search_by_tag(self, tag):
+        """Поиск контактов по тегу"""
+        results = []
+        for record in self.data.values():
+            if record.has_tag(tag):
+                results.append(record)
+        return results
+
+    def get_all_tags(self):
+        """Получение всех уникальных тегов"""
+        all_tags = set()
+        for record in self.data.values():
+            all_tags.update(record.get_tags())
+        return sorted(all_tags)
+
+    def get_contacts_by_tags(self, tags):
+        """Получение контактов, имеющих все указанные теги"""
+        results = []
+        for record in self.data.values():
+            if all(record.has_tag(tag) for tag in tags):
+                results.append(record)
+        return results
 
     def upcoming_birthday(self, days=7):
         """
@@ -656,6 +710,48 @@ def guess_command(user_input, known_commands, threshold=0.8):
     # No matches found
     return None, args, False
 
+@exception_handler
+def add_tag(book, name, tag):
+    """Добавляет тег к заметке контакта"""
+    record = book.find_record(name)
+    if record:
+        record.add_tag(tag)
+        return Fore.GREEN + f'Тег "{tag}" добавлен к заметке контакта {name}' + Style.RESET_ALL
+    raise KeyError
+
+@exception_handler
+def remove_tag(book, name, tag):
+    """Удаляет тег из заметки контакта"""
+    record = book.find_record(name)
+    if record:
+        record.remove_tag(tag)
+        return Fore.GREEN + f'Тег "{tag}" удален из заметки контакта {name}' + Style.RESET_ALL
+    raise KeyError
+
+def show_tags(book, name):
+    """Показывает все теги заметки контакта"""
+    record = book.find_record(name)
+    if record:
+        tags = record.get_tags()
+        if tags:
+            return f'Tags of contact {name}\'s note: {", ".join(tags)}'
+        return Fore.YELLOW + 'Note has no tags' + Style.RESET_ALL
+    return Fore.YELLOW + 'Contact not found' + Style.RESET_ALL
+
+def search_by_tag(book, tag):
+    """Search for contacts by tag"""
+    results = book.search_by_tag(tag)
+    if results:
+        return "\n".join(str(record) for record in results)
+    return Fore.YELLOW + f'Contacts with tag "{tag}" not found' + Style.RESET_ALL
+
+def show_all_tags(book):
+    """Shows all unique tags"""
+    tags = book.get_all_tags()
+    if tags:
+        return f'All tags: {", ".join(tags)}'
+    return Fore.YELLOW + 'Tags not found' + Style.RESET_ALL
+
 def main():
     """
     The main function that runs the console assistant bot.
@@ -670,6 +766,7 @@ def main():
         "add", "search",
         "edit-name", 
         "add-note", "edit-note", "remove-note","show-note",
+        "add-tag", "remove-tag", "show-tags", "search-tag", "all-tags",
         "all", 
         "delete", 
         "add-birthday", "show-birthday",
@@ -800,6 +897,16 @@ def main():
             print(edit_address(book, args[0], ' '.join(args[1:])))
         elif command == 'remove-address' and len(args) >= 1:
             print(remove_address(book, args[0]))
+        elif command == 'add-tag' and len(args) >= 2:
+            print(add_tag(book, args[0], args[1]))
+        elif command == 'remove-tag' and len(args[0]) >= 2:
+            print(remove_tag(book, args[0], args[1]))
+        elif command == 'show-tags' and len(args) >= 1:
+            print(show_tags(book, args[0]))
+        elif command == 'search-tag' and len(args) >= 1:
+            print(search_by_tag(book, args[0]))
+        elif command == 'all-tags':
+            print(show_all_tags(book))
         else:
             print(
                 Fore.RED + 'Unknown command or insufficient arguments. Please try again' + Style.RESET_ALL)

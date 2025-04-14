@@ -11,6 +11,7 @@ A powerful and interactive **console assistant** written in Python. This project
 - 📧 **Email Management**: Add, edit, and remove email addresses.
 - 🎂 **Birthday Tracker**: Save birthdays and get notifications for upcoming ones.
 - 📝 **Notes System**: Attach and manage notes for each contact.
+- 🏷️ **Tag Management**: Add, remove, and search by tags for better organization.
 - 🏠 **Address Management**: Add, edit, and remove addresses for contacts.
 - 💾 **Auto Save**: Data is automatically saved and loaded using `pickle`.
 - 💡 **Command Suggestions**: Mistyped a command? The bot suggests the closest match!
@@ -40,6 +41,7 @@ venv\Scripts\activate
 # Activate on macOS/Linux
 source venv/bin/activate
 ```
+
 ---
 
 ### 📥 Install Dependencies
@@ -56,35 +58,41 @@ After setting up the virtual environment, install the required dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
 ---
 
 ## 🛠️ Available Commands
 
-| Category  | Command         | Description                   | Example Parameters           |
-| --------- | --------------- | ----------------------------- | ---------------------------- |
-| General   | `hello`         | Greet the bot                 |                              |
-|           | `exit`, `close` | Exit and save the assistant   |                              |
-| Contacts  | `add`           | Add new contact               | name phone                   |
-|           | `edit-name`     | Change contact name           | old name new name            |
-|           | `delete`        | Delete a contact              | name                         |
-|           | `search`        | Search by name or phone       | name, phone, email, note     | 
-|           | `all`           | Show all contacts             | no input required            |
-| Notes     | `add-note`      | Add a note to a contact       | name note                    |
-|           | `edit-note`     | Edit existing note            | name new note                |
-|           | `remove-note`   | Remove contact’s note         | name containing note         |
-|           | `show-note`     | Display contact’s note        | name                         |
-| Birthdays | `add-birthday`  | Add a birthday to a contact   | name date of birth           |
-|           | `show-birthday` | Show a contact’s birthday     | name                         |
-|           | `birthdays`     | View upcoming birthdays       | no input required            |
-| Emails    | `add-email`     | Add email to contact          | name email                   |
-|           | `edit-email`    | Change email                  | name new email               |
-|           | `remove-email`  | Remove email                  | name                         |
-| Phone     | `phone`         | Show a contact’s phone        | name                         |
-|           | `edit-phone`    | Edit a contact’s phone number | name old phone new phone     |
-|           | `remove-phone`  | Remove a phone                | name phone                   |
-| Address   | `add-address`   | Add address                   | name address                 |
-|           | `edit-address`  | Edit address                  | name old address new address |
-|           | `remove-address`| Remove address                | name address                 |
+| Category  | Command          | Description                   | Example Parameters           |
+| --------- | ---------------- | ----------------------------- | ---------------------------- |
+| General   | `hello`          | Greet the bot                 |                              |
+|           | `exit`, `close`  | Exit and save the assistant   |                              |
+| Contacts  | `add`            | Add new contact               | name phone                   |
+|           | `edit-name`      | Change contact name           | old name new name            |
+|           | `delete`         | Delete a contact              | name                         |
+|           | `search`         | Search by name or phone       | name, phone, email, note     |
+|           | `all`            | Show all contacts             | no input required            |
+| Notes     | `add-note`       | Add a note to a contact       | name note                    |
+|           | `edit-note`      | Edit existing note            | name new note                |
+|           | `remove-note`    | Remove contact's note         | name containing note         |
+|           | `show-note`      | Display contact's note        | name                         |
+| Tags      | `add-tag`        | Add a tag to a note           | name tag                     |
+|           | `remove-tag`     | Remove a tag from a note      | name tag                     |
+|           | `show-tags`      | Show all tags of a note       | name                         |
+|           | `search-tag`     | Search contacts by tag        | tag                          |
+|           | `all-tags`       | Show all unique tags          | no input required            |
+| Birthdays | `add-birthday`   | Add a birthday to a contact   | name date of birth           |
+|           | `show-birthday`  | Show a contact's birthday     | name                         |
+|           | `birthdays`      | View upcoming birthdays       | no input required            |
+| Emails    | `add-email`      | Add email to contact          | name email                   |
+|           | `edit-email`     | Change email                  | name new email               |
+|           | `remove-email`   | Remove email                  | name                         |
+| Phone     | `phone`          | Show a contact's phone        | name                         |
+|           | `edit-phone`     | Edit a contact's phone number | name old phone new phone     |
+|           | `remove-phone`   | Remove a phone                | name phone                   |
+| Address   | `add-address`    | Add address                   | name address                 |
+|           | `edit-address`   | Edit address                  | name old address new address |
+|           | `remove-address` | Remove address                | name address                 |
 
 ## 💾 Data Persistence
 
@@ -120,25 +128,76 @@ addressbook.pkl      # Data saved automatically here
 
 ## 📖 Examples
 
+### Add a new contact with tags
+
+```bash
+> add John 123456789
+Contact John with number 123456789 has been added
+
+> add-note John "Important meeting with client"
+Note added to contact John
+
+> add-tag John work
+Tag "work" added to contact John's note
+
+> add-tag John meeting
+Tag "meeting" added to contact John's note
+```
+
+### Search by tags
+
+```bash
+> search-tag work
+👤 Contact name: John
+📞 Phones: 123456789
+📝 Note: Important meeting with client
+🏷️ Tags: work, meeting
+```
+
+### Show all tags
+
+```bash
+> all-tags
+All tags: meeting, work
+```
+
+### Show tags of a specific contact
+
+```bash
+> show-tags John
+Tags of contact John's note: work, meeting
+```
+
+### Remove a tag
+
+```bash
+> remove-tag John meeting
+Tag "meeting" removed from contact John's note
+```
+
 ### Add a new contact
+
 ```bash
 > add John 123456789
 Contact John with number 123456789 has been added
 ```
 
 ### Edit a contact's phone number
+
 ```bash
 > edit-phone John 123456789 987654321
 Contact John updated
 ```
 
 ### Add a note to a contact
+
 ```bash
 > add-note John "This is a note for John"
 Note added to contact John
 ```
 
 ### Show all contacts
+
 ```bash
 > all
 👤 Contact name: John
@@ -147,6 +206,7 @@ Note added to contact John
 ```
 
 ### Search for a contact
+
 ```bash
 > search John
 👤 Contact name: John
@@ -155,18 +215,21 @@ Note added to contact John
 ```
 
 ### Delete a contact
+
 ```bash
 > delete John
 Contact John was deleted
 ```
 
 ### Add a birthday to a contact
+
 ```bash
 > add-birthday John 01.01.1990
 Birthday 01.01.1990 added to contact John
 ```
 
 ### Show upcoming birthdays
+
 ```bash
 > birthdays
 John: 01.01.1990 (in 5 days)
