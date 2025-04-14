@@ -257,7 +257,6 @@ class Record:
         self.note = ''
         self.tags = set()
         self.email = Email(email) if email else None
-        self.tags = set()
         self.address = address
 
     def set_address(self, address):
@@ -777,7 +776,8 @@ def add_tags(book, name, *tags):
     record = book.find_record(name)
     if not record:
         raise KeyError
-    record.add_tags(*tags)
+    for tag in tags:
+        record.add_tag(tag)
     return Fore.GREEN + f"Tags added to {name}: {', '.join(tags)}" + Style.RESET_ALL
 
 
