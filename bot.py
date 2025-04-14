@@ -42,6 +42,13 @@ def display_commands_table():
             ("remove-note", "Remove a note"),  # Remove a note
             ("show-note", "Show a note"),  # Display a note
         ]),
+        ("Tag management", [
+            ("add-tag", "Add a tag to a note"),  # Add a tag to a note
+            ("remove-tag", "Remove a tag from a note"),  # Remove a tag from a note
+            ("show-tags", "Show all tags of a note"),  # Show all tags of a note
+            ("search-tag", "Search for contacts with a specific tag"),  # Search for contacts with a specific tag
+            ("all-tags", "Show all unique tags"),  # Show all unique tags
+        ]),
         ("Birthday management", [
             ("add-birthday", "Add a birthday"),  # Add a birthday to a contact
             ("show-birthday", "Show a birthday"),  # Show a contact's birthday
@@ -189,6 +196,11 @@ class Birthday(Field):
         return self.value.strftime('%d.%m.%Y')
 
 
+class Tag(Field):
+    def __init__(self, value):
+        super().__init__(value)
+
+
 class Record:
     """
     Represents a single contact record in the address book.
@@ -200,6 +212,7 @@ class Record:
         self.phones = []
         self.birthday = None
         self.note = ''
+        self.tags = set()
         self.email = Email(email) if email else None
         self.tags = set()
         self.address = address
@@ -283,19 +296,26 @@ class Record:
         """Returns the note of the contact."""
         return self.note
 
-    def add_tags(self, *tags):
-        self.tags.update(tag.lower() for tag in tags)
+    def add_tag(self, tag):
+        """Adds a tag to the note"""
+        self.tags.add(Tag(tag))
 
     def remove_tag(self, tag):
-        self.tags.discard(tag.lower())
+        """Removes a tag from the note"""
+        self.tags = {t for t in self.tags if t.value != tag}
 
-    def show_tags(self):
-        return ', '.join(sorted(self.tags)) if self.tags else "No tags"
+    def get_tags(self):
+        """Returns a list of note tags"""
+        return [tag.value for tag in self.tags]
+
+    def has_tag(self, tag):
+        """Checks if the note has a specific tag"""
+        return any(t.value == tag for t in self.tags)
 
     def __str__(self):
         """
         Returns a string representation of the contact,
-        including name, phones, birthday, email, notes, and address.
+        including name, phones, birthday, email, notes, tags, and address.
         """
         phone_str = ', '.join(str(k)
                               for k in self.phones) if self.phones else '📵 No phones'
@@ -303,8 +323,7 @@ class Record:
         note_str = f'📝 Note: {Style.RESET_ALL}{self.note}' if self.note else '📝 Note: Not set'
         email_str = f'✉️  Email:{Style.RESET_ALL}{self.email.value}' if self.email else '✉️  Email: Not set'
         address_str = f'🏠 Address: {Style.RESET_ALL}{self.address}' if self.address else '🏠 Address: Not set'
-        tags_str = f'Tags: {self.show_tags()}' if self.tags else 'Tags: Not set'
-
+        tags_str = f'🏷️ Tags: {Style.RESET_ALL}{", ".join(self.get_tags())}' if self.tags else '🏷️ Tags: No tags'
         return (
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
             f"👤{Fore.CYAN} Contact name:{Style.RESET_ALL} {self.name} \n"
@@ -312,6 +331,7 @@ class Record:
             f"{Fore.CYAN}{bday_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{email_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{note_str}{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{tags_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{address_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{tags_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
@@ -368,6 +388,29 @@ class AddressBook(UserDict):
         """Deletes a contact record by name."""
         if name in self.data:
             del self.data[name]
+
+    def search_by_tag(self, tag):
+        """Поиск контактов по тегу"""
+        results = []
+        for record in self.data.values():
+            if record.has_tag(tag):
+                results.append(record)
+        return results
+
+    def get_all_tags(self):
+        """Получение всех уникальных тегов"""
+        all_tags = set()
+        for record in self.data.values():
+            all_tags.update(record.get_tags())
+        return sorted(all_tags)
+
+    def get_contacts_by_tags(self, tags):
+        """Получение контактов, имеющих все указанные теги"""
+        results = []
+        for record in self.data.values():
+            if all(record.has_tag(tag) for tag in tags):
+                results.append(record)
+        return results
 
     def upcoming_birthday(self, days=7):
         """
@@ -761,6 +804,84 @@ def load_data(filename='addressbook.pkl'):
         return AddressBook()
 
 
+def guess_command(user_input, known_commands, threshold=0.8):
+    """
+    Returns the most similar command and list of arguments.
+    If similarity ≥ threshold, the command is applied automatically.
+    """
+    tokens = user_input.strip().split()
+    if not tokens:
+        return None, [], False  # Handle empty input gracefully
+
+    input_cmd = tokens[0].lower()
+    args = tokens[1:]
+
+    # Exact match
+    if input_cmd in known_commands:
+        return input_cmd, args, True
+
+    # Fuzzy matching for similar commands
+    matches = []
+    for cmd in known_commands:
+        ratio = difflib.SequenceMatcher(None, input_cmd, cmd).ratio()
+        if ratio >= threshold:
+            matches.append((cmd, ratio))
+
+    # Sort matches by similarity (highest first)
+    matches.sort(key=lambda x: x[1], reverse=True)
+
+    if matches:
+        # If there's only one confident match and it's above a stricter threshold
+        if len(matches) == 1 and matches[0][1] >= 0.9:
+            return matches[0][0], args, True
+        # Otherwise, return the top matches for user confirmation
+        return [match[0] for match in matches], args, False
+
+    # No matches found
+    return None, args, False
+
+@exception_handler
+def add_tag(book, name, tag):
+    """Добавляет тег к заметке контакта"""
+    record = book.find_record(name)
+    if record:
+        record.add_tag(tag)
+        return Fore.GREEN + f'Тег "{tag}" добавлен к заметке контакта {name}' + Style.RESET_ALL
+    raise KeyError
+
+@exception_handler
+def remove_tag(book, name, tag):
+    """Удаляет тег из заметки контакта"""
+    record = book.find_record(name)
+    if record:
+        record.remove_tag(tag)
+        return Fore.GREEN + f'Тег "{tag}" удален из заметки контакта {name}' + Style.RESET_ALL
+    raise KeyError
+
+def show_tags(book, name):
+    """Показывает все теги заметки контакта"""
+    record = book.find_record(name)
+    if record:
+        tags = record.get_tags()
+        if tags:
+            return f'Tags of contact {name}\'s note: {", ".join(tags)}'
+        return Fore.YELLOW + 'Note has no tags' + Style.RESET_ALL
+    return Fore.YELLOW + 'Contact not found' + Style.RESET_ALL
+
+def search_by_tag(book, tag):
+    """Search for contacts by tag"""
+    results = book.search_by_tag(tag)
+    if results:
+        return "\n".join(str(record) for record in results)
+    return Fore.YELLOW + f'Contacts with tag "{tag}" not found' + Style.RESET_ALL
+
+def show_all_tags(book):
+    """Shows all unique tags"""
+    tags = book.get_all_tags()
+    if tags:
+        return f'All tags: {", ".join(tags)}'
+    return Fore.YELLOW + 'Tags not found' + Style.RESET_ALL
+
 def main():
     # book = AddressBook()
     book = load_data()  # Download at the start
@@ -769,10 +890,11 @@ def main():
     known_commands = [
         "hello",
         "add", "search",
-        "edit-name",
-        "add-note", "edit-note", "remove-note", "show-note",
-        "all",
-        "delete",
+        "edit-name", 
+        "add-note", "edit-note", "remove-note","show-note",
+        "add-tag", "remove-tag", "show-tags", "search-tag", "all-tags",
+        "all", 
+        "delete", 
         "add-birthday", "show-birthday",
         "add-email", "edit-email", "remove-email",
         "add-address", "edit-address", "remove-address",
@@ -835,52 +957,35 @@ def main():
             save_data(book)  # Save the address book data before exiting
             print('Goodbye')
             break
-        #  Guess the command and extract arguments
-        guessed_command, args, is_confident = guess_command(
-            user_input, known_commands)
 
-        if guessed_command is None:
-            print(
-                Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
+        # Guess the command and extract arguments
+        guess_result, args, is_confident = guess_command(user_input, known_commands)
+
+        if guess_result is None:
+            print(Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
             continue
 
-        tokens = user_input.strip().split()
-
-        if not is_confident and tokens[0].lower() != guessed_command:
-            response = input(
-                Fore.YELLOW + f'Maybe you meant "{guessed_command}"? (y/n): ' + Style.RESET_ALL)
-            if response.lower() != 'y':
-                print(
-                    Fore.RED + 'Unknown command. Please try again.' + Style.RESET_ALL)
-                continue
-
-        # Спроба визначити команду за допомогою помічника
-        else:
-            guess_result, args = guess_command(user_input, known_commands)
-
-            if guess_result is None:
-                print(
-                    Fore.RED + 'Невідома команда. Будь ласка, спробуйте ще раз.' + Style.RESET_ALL)
-                continue
-
-            if isinstance(guess_result, list):
-                suggestion_dict = {i + 1: cmd for i,
-                                   cmd in enumerate(guess_result)}
-                last_arg = user_input.strip().split()[1:]
-                pending_command = None
-                print(Fore.MAGENTA + "[DEBUG] Сформований словник підсказка:")
-                for key, val in suggestion_dict.items():
-                    print(f'{key}: {val}')
-                print(Style.RESET_ALL)
-
-                print(Fore.YELLOW + "Можливі команди:")
-                for key, val in suggestion_dict.items():
-                    print(f"{key}.{val}")
-                pending_command = None
-                continue
+        if isinstance(guess_result, list):
+            # If multiple suggestions are returned
+            print(Fore.YELLOW + "Did you mean one of these commands?")
+            for i, cmd in enumerate(guess_result, 1):
+                print(f"{i}. {cmd}")
+            choice = input(Fore.CYAN + "Enter the number of the correct command, or press Enter to cancel: " + Style.RESET_ALL)
+            if choice.isdigit() and 1 <= int(choice) <= len(guess_result):
+                guessed_command = guess_result[int(choice) - 1]
             else:
-                command = guess_result
-
+                print(Fore.RED + "Command selection canceled. Please try again." + Style.RESET_ALL)
+                continue
+        elif not is_confident:
+            # If the match is not confident, ask for confirmation
+            response = input(Fore.YELLOW + f'Maybe you meant "{guess_result}"? (y/n): ' + Style.RESET_ALL)
+            if response.lower() != 'y':
+                print(Fore.RED + "Command canceled. Please try again." + Style.RESET_ALL)
+                continue
+        else:
+            guessed_command = guess_result
+            
+        command = guessed_command
         # Handle the "exit" and "close" commands to terminate the program
         if command in ('exit', 'close'):
             save_data(book)  # Save the address book data before exiting
@@ -963,6 +1068,16 @@ def main():
             print(edit_address(book, args[0], ' '.join(args[1:])))
         elif command == 'remove-address' and len(args) >= 1:
             print(remove_address(book, args[0]))
+        elif command == 'add-tag' and len(args) >= 2:
+            print(add_tag(book, args[0], args[1]))
+        elif command == 'remove-tag' and len(args[0]) >= 2:
+            print(remove_tag(book, args[0], args[1]))
+        elif command == 'show-tags' and len(args) >= 1:
+            print(show_tags(book, args[0]))
+        elif command == 'search-tag' and len(args) >= 1:
+            print(search_by_tag(book, args[0]))
+        elif command == 'all-tags':
+            print(show_all_tags(book))
         else:
             print(
                 Fore.RED + 'Unknown command or insufficient arguments. Please try again' + Style.RESET_ALL)
