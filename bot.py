@@ -4,6 +4,7 @@ import pickle
 import re
 import difflib
 from colorama import init, Fore, Back, Style
+from tabulate import tabulate
 
 init(autoreset=True)
 
@@ -65,6 +66,48 @@ def display_commands_table():
         print(Fore.CYAN + "." * 50 + Style.RESET_ALL)
         print("\n")
 
+# Function to display a table of contacts
+def format_all_contacts_as_table(book):
+    """
+    Formats all contacts in the address book as a table.
+    """
+    if not book.data:
+        return Fore.YELLOW + "The contact list is empty." + Style.RESET_ALL
+
+    headers = [
+        Fore.CYAN + "Name" + Style.RESET_ALL,
+        Fore.CYAN + "Phones" + Style.RESET_ALL,
+        Fore.CYAN + "Birthday" + Style.RESET_ALL,
+        Fore.CYAN + "Email" + Style.RESET_ALL,
+        Fore.CYAN + "Note" + Style.RESET_ALL,
+        Fore.CYAN + "Address" + Style.RESET_ALL
+    ]
+    data = []
+    for record in book.data.values():
+        data.append([
+            Fore.CYAN + record.name.value + Style.RESET_ALL,
+            Fore.CYAN + ', '.join(phone.value for phone in record.phones) + Style.RESET_ALL if record.phones else Fore.YELLOW + "No phones" + Style.RESET_ALL,
+            Fore.CYAN + str(record.birthday) + Style.RESET_ALL if record.birthday else Fore.YELLOW + "Not set" + Style.RESET_ALL,
+            Fore.CYAN + record.email.value + Style.RESET_ALL if record.email else Fore.YELLOW + "Not set" + Style.RESET_ALL,
+            Fore.CYAN + record.note + Style.RESET_ALL if record.note else Fore.YELLOW + "Not set" + Style.RESET_ALL,
+            Fore.CYAN + record.address + Style.RESET_ALL if record.address else Fore.YELLOW + "Not set" + Style.RESET_ALL
+        ])
+    return tabulate(data, headers, tablefmt="grid")
+
+def format_contact_as_table(contact):
+    """
+    Formats a single contact as a table with colors.
+    """
+    headers = [Fore.CYAN + "Field" + Style.RESET_ALL, Fore.CYAN + "Value" + Style.RESET_ALL]
+    data = [
+        [Fore.GREEN + "Name" + Style.RESET_ALL, Fore.CYAN + contact.name.value + Style.RESET_ALL],
+        [Fore.GREEN + "Phones" + Style.RESET_ALL, Fore.CYAN + ', '.join(phone.value for phone in contact.phones) + Style.RESET_ALL if contact.phones else Fore.YELLOW + "No phones" + Style.RESET_ALL],
+        [Fore.GREEN + "Birthday" + Style.RESET_ALL, Fore.CYAN + str(contact.birthday) + Style.RESET_ALL if contact.birthday else Fore.YELLOW + "Not set" + Style.RESET_ALL],
+        [Fore.GREEN + "Email" + Style.RESET_ALL, Fore.CYAN + contact.email.value + Style.RESET_ALL if contact.email else Fore.YELLOW + "Not set" + Style.RESET_ALL],
+        [Fore.GREEN + "Note" + Style.RESET_ALL, Fore.CYAN + contact.note + Style.RESET_ALL if contact.note else Fore.YELLOW + "Not set" + Style.RESET_ALL],
+        [Fore.GREEN + "Address" + Style.RESET_ALL, Fore.CYAN + contact.address + Style.RESET_ALL if contact.address else Fore.YELLOW + "Not set" + Style.RESET_ALL]
+    ]
+    return tabulate(data, headers, tablefmt="grid")
 
 # Function to validate phone numbers
 def validate_phone(value):
@@ -758,7 +801,7 @@ def main():
         elif command == 'search' and len(args) >= 1:
             print(search_contacts(book, args[0]))
         elif command == 'all':
-            print(show_all(book))
+            print(format_all_contacts_as_table(book))
         elif command == 'delete' and len(args) >= 1:
             print(delete_contact(book, args[0]))
         elif command == 'add-birthday' and len(args) >= 2:
