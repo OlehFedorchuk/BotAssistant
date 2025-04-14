@@ -8,6 +8,8 @@ from colorama import init, Fore, Back, Style
 init(autoreset=True)
 
 # Function to display a table of available commands
+
+
 def display_commands_table():
     # Define the list of commands grouped by categories
     commands = [
@@ -17,7 +19,7 @@ def display_commands_table():
             ("close", "Close the program"),  # Close the program
         ]),
         ("Contact management", [
-            ("add", "Add contact"),  # Add a new contact   
+            ("add", "Add contact"),  # Add a new contact
             ("edit-name", "Edit a contact's name"),  # Edit a contact's name
             ("delete", "Delete a contact"),  # Delete a contact
             ("search", "Search for a contact"),  # Search for a contact
@@ -26,7 +28,8 @@ def display_commands_table():
         ("Phone management", [
             ("phone", "Show a contact's phone"),  # Show a contact's phone
             ("edit-phone", "Edit a phone"),  # Edit a contact's phone number
-            ("remove-phone", "Remove a phone"),  # Remove a contact's phone number
+            # Remove a contact's phone number
+            ("remove-phone", "Remove a phone"),
         ]),
         ("Address management", [
             ("add-address", "Add address"),  # Add an address to a contact
@@ -55,6 +58,13 @@ def display_commands_table():
             ("add-email", "Add email"),  # Add an email to a contact
             ("edit-email", "Edit email"),  # Edit a contact's email
             ("remove-email", "Remove email"),  # Remove a contact's email
+        ]),
+        ("Tags management", [
+            ("add-tag", "add-tag"),  # add a tag to a contact
+            ("remove-tag", "remove-tag"),  # remove a tag from a contact
+            ("show-tags", "show-tags"),  # show existing tags
+            ("search-tag", "search-tag"),  # find a contact by tag
+            ("sort-notes", "sort-notes")  # sorts notes by tags
         ])
     ]
 
@@ -73,7 +83,36 @@ def display_commands_table():
         print("\n")
 
 
+def guess_command(user_input, know_commands):
+    '''
+    Розширенний автопідбір: повертає список можливих команд, що містять введений текст
+    або схожі на нього
+    '''
+    tokens = user_input.strip().split()
+    if not tokens:
+        return None, []
+
+    input_cmd = tokens[0].lower()
+    args = tokens[1:]
+
+    if input_cmd in know_commands:
+        return input_cmd, args
+
+    contains_matches = [cmd for cmd in know_commands if input_cmd in cmd]
+
+    unclear_matches = difflib.get_close_matches(input_cmd, know_commands, n=len(know_commands),
+                                                cutoff=0.5)
+
+    all_matches = list(dict.fromkeys(contains_matches + unclear_matches))
+
+    if all_matches:
+        return all_matches, args
+
+    return None, args
+
+
 # Function to validate phone numbers
+
 def validate_phone(value):
     # Ensure the phone number is numeric and has a valid length
     if not value.isdigit() or not (9 <= len(value) <= 14):
@@ -175,6 +214,7 @@ class Record:
         self.note = ''
         self.tags = set()
         self.email = Email(email) if email else None
+        self.tags = set()
         self.address = address
 
     def set_address(self, address):
@@ -208,7 +248,6 @@ class Record:
                 del self.phones[i]
                 return
         raise ValueError(f"Phone number {phone} not found.")
-
 
     def edit_phone(self, old_phone, new_phone):
         """Edits an existing phone number."""
@@ -278,7 +317,8 @@ class Record:
         Returns a string representation of the contact,
         including name, phones, birthday, email, notes, tags, and address.
         """
-        phone_str = ', '.join(str(k) for k in self.phones) if self.phones else '📵 No phones'
+        phone_str = ', '.join(str(k)
+                              for k in self.phones) if self.phones else '📵 No phones'
         bday_str = f'🎂 Birthday:{Style.RESET_ALL}{self.birthday}' if self.birthday else '🎂 Birthday: Not set'
         note_str = f'📝 Note: {Style.RESET_ALL}{self.note}' if self.note else '📝 Note: Not set'
         email_str = f'✉️  Email:{Style.RESET_ALL}{self.email.value}' if self.email else '✉️  Email: Not set'
@@ -293,6 +333,7 @@ class Record:
             f"{Fore.CYAN}{note_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{tags_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{address_str}{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{tags_str}{Style.RESET_ALL}\n"
             f"{Fore.CYAN}{'.' * 50}{Style.RESET_ALL}\n"
         )
 
@@ -413,6 +454,7 @@ class AddressBook(UserDict):
             return Fore.YELLOW + 'List is empty' + Style.RESET_ALL
         return '\n'.join(str(record) for record in self.data.values())
 
+
 @exception_handler
 def add_address(book, name, address):
     """
@@ -451,6 +493,7 @@ def remove_address(book, name):
         return Fore.GREEN + f'Address removed from contact {name}' + Style.RESET_ALL
     raise KeyError
 
+
 @exception_handler
 def remove_phone(book, name, phone):
     """
@@ -462,6 +505,7 @@ def remove_phone(book, name, phone):
         record.remove_phone(phone)
         return Fore.GREEN + f"Phone number {phone} removed from contact {name}" + Style.RESET_ALL
     raise KeyError("Contact not found")
+
 
 @exception_handler
 def add_contact(book, name, phone):
@@ -560,6 +604,7 @@ def show_phone(book, name):
         return Fore.YELLOW + 'No phone numbers found for this contact' + Style.RESET_ALL
     return Fore.YELLOW + 'Contact was not found' + Style.RESET_ALL
 
+
 def search_contacts(book, query):
     """
     Searches for contacts in the address book by name, phone number, email, or notes.
@@ -570,7 +615,8 @@ def search_contacts(book, query):
 
     for record in book.data.values():
         name_match = query_lower in record.name.value.lower()
-        phone_match = any(query_lower in str(phone.value).lower() for phone in record.phones)
+        phone_match = any(query_lower in str(phone.value).lower()
+                          for phone in record.phones)
         email_match = record.email and query_lower in record.email.value.lower()
         note_match = query_lower in record.note.lower() if record.note else False
 
@@ -581,6 +627,7 @@ def search_contacts(book, query):
         return "\n".join(results)
 
     raise KeyError("Contact not found")
+
 
 def show_all(book):
     """
@@ -615,6 +662,7 @@ def add_birthday_to_contact(book, name, birthday_str):
     record.add_birthday(birthday_str)
     return Fore.GREEN + f'Birthday {birthday_str} added to contact {name}' + Style.RESET_ALL
 
+
 @exception_handler
 def remove_email(book, name):
     """
@@ -629,6 +677,7 @@ def remove_email(book, name):
         except ValueError as e:
             return Fore.YELLOW + f"Warning: {e}" + Style.RESET_ALL
     raise KeyError("Contact not found")
+
 
 def show_birthday(book, name):
     """
@@ -659,6 +708,87 @@ def upcoming_birthday(book):
         lines.append(
             f'{record.name.value}: {record.birthday} (in {days_left} days)')
     return '\n'.join(lines)
+
+
+def search_notes(book, query):
+    '''
+    search for contacts with tags
+    '''
+    results = []
+    for record in book.data.values():
+        note_text = record.note.lower()
+        tag_list = [t.lower() for t in record.tags]
+        if query.lower() in note_text or query.lower() in ' '.join(tag_list):
+            results.append(record)
+
+    if results:
+        return '\n'.join(str(r) for r in results)
+    return Fore.YELLOW + 'No tags found matching your query' + Style.RESET_ALL
+
+
+@exception_handler
+def add_tags(book, name, *tags):
+    '''
+    Adding tags to contact list, tags are not duplicated
+    '''
+    record = book.find_record(name)
+    if not record:
+        raise KeyError
+    record.add_tags(*tags)
+    return Fore.GREEN + f"Tags added to {name}: {', '.join(tags)}" + Style.RESET_ALL
+
+
+@exception_handler
+def remove_tags(book, name, tag):
+    '''
+    Deleting tegs from contacts list, if there are any tegs
+    '''
+    record = book.find_record(name)
+    if not record:
+        raise KeyError
+    if tag.lower() not in record.tags:
+        return Fore.YELLOW + f"Tag '{tag}' not found for {name}" + Style.RESET_ALL
+    record.remove_tag(tag)
+    return Fore.GREEN + f"Tag '{tag}' removed form {name}" + Style.RESET_ALL
+
+
+@exception_handler
+def show_tags(book, name):
+    record = book.find_record(name)
+    if not record:
+        raise KeyError
+    return f"Tags for {name}: {record.show_tags()}"
+
+
+@exception_handler
+def search_by_tag(book, tag):
+    tag = tag.lower()
+    result = [r for r in book.data.values() if tag in r.tags]
+    if result:
+        return "\n".join(str(r) for r in result)
+    return Fore.YELLOW + f"No contacts found with tag '{tag}'"
+
+
+def sort_notes_by_tags(book):
+    '''
+    Sorts notes by tags, displaying a list of contacts grouped by tegs
+    '''
+    tag_dict = {}
+    for record in book.data.values():
+        for tag in record.tags:
+            tag_dict.setdefault(tag, []).append(record)
+
+    if not tag_dict:
+        return Fore.YELLOW + "No tags found in the notebook" + Style.RESET_ALL
+
+    output = []
+    for tag in sorted(tag_dict):
+        output.append(Fore.BLUE + f"\nTag: #{tag}" + Style.RESET_ALL)
+        for record in tag_dict[tag]:
+            note = record.note if record else "No note"
+            output.append(f"- {record.name.value}: {note}")
+    return '\n'.join(output)
+# ============ Added functions of saving and personalization`` ==================================
 
 
 def save_data(book, filename='addressbook.pkl'):
@@ -753,16 +883,12 @@ def show_all_tags(book):
     return Fore.YELLOW + 'Tags not found' + Style.RESET_ALL
 
 def main():
-    """
-    The main function that runs the console assistant bot.
-    Handles user input, processes commands, and interacts with the AddressBook.
-    """
-    # Load the address book data from a file or create a new one if the file doesn't exist
-    book = load_data()
+    # book = AddressBook()
+    book = load_data()  # Download at the start
 
     # List of known commands supported by the bot
     known_commands = [
-        "hello", 
+        "hello",
         "add", "search",
         "edit-name", 
         "add-note", "edit-note", "remove-note","show-note",
@@ -772,7 +898,7 @@ def main():
         "add-birthday", "show-birthday",
         "add-email", "edit-email", "remove-email",
         "add-address", "edit-address", "remove-address",
-        "birthdays", 
+        "birthdays",
         "edit-phone", "remove-phone",
         "phone",
         "exit", "close"
@@ -782,6 +908,10 @@ def main():
     print(Fore.BLUE + 'Hi! I am a console assistant bot' + Style.RESET_ALL)
     print()
     display_commands_table()
+
+    suggestion_dict = {}
+    pending_command = None
+    last_arg = []
 
     # Main loop to process user commands
     while True:
@@ -793,6 +923,35 @@ def main():
             # Handle empty input
             print(Fore.YELLOW + 'Empty input. Please try again.' + Style.RESET_ALL)
             continue
+        # === Step 1 =====
+        if pending_command:
+            args = user_input.strip().split()
+            command = pending_command
+            pending_command = None
+            print(Fore.MAGENTA + f"[DEBAG] Обрано команду: {command}")
+            print(f"[DEBAG] Аргумент (args): {args}" + Style.RESET_ALL)
+
+        # === Step 2 ======
+        elif suggestion_dict:
+            parts = user_input.strip().split()
+            if parts and parts[0].isdigit():
+                selection = int(parts[0])
+                if selection in suggestion_dict:
+                    command = suggestion_dict[selection]
+                    args = parts[1:] if len(parts) > 1 else last_arg
+                    suggestion_dict = {}
+                    pending_command = command
+                    print(Fore.MAGENTA + f'[DEBUG] Обрано команду: {pending_command}' +
+                          Style.RESET_ALL)
+                    print(Fore.CYAN +
+                          f"Введіть аргументи для команди '{pending_command}':")
+                else:
+                    print(Fore.RED + "Incorrect number" + Style.RESET_ALL)
+                    continue
+            else:
+                print(
+                    Fore.RED + "Please enter a valid selection number" + Style.RESET_ALL)
+
         # Check for exact match with "exit" or "close"
         if user_input.lower() in ('exit', 'close'):
             save_data(book)  # Save the address book data before exiting
@@ -866,6 +1025,16 @@ def main():
             print(upcoming_birthday(book))
         elif command == 'remove-phone' and len(args) >= 2:
             print(remove_phone(book, args[0], args[1]))
+        elif command == 'add-tag' and len(args) >= 2:
+            print(add_tags(book, args[0], *args[1:]))
+        elif command == 'remove-tag' and len(args) >= 2:
+            print(remove_tags(book, args[0], args[1]))
+        elif command == 'show-tags' and len(args) >= 1:
+            print(show_tags(book, args[0]))
+        elif command == 'search-tag' and len(args) >= 1:
+            print(search_by_tag(book, args[0]))
+        elif command == 'sort-notes':
+            print(sort_notes_by_tags(book))
         elif command == 'add-email' and len(args) >= 2:
             record = book.find_record(args[0])
             if record:
@@ -876,13 +1045,15 @@ def main():
                 except ValueError as e:
                     print(Fore.RED + f"Error: {e}" + Style.RESET_ALL)
             else:
-                print(Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
+                print(
+                    Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
         elif command == 'edit-email' and len(args) >= 2:
             record = book.find_record(args[0])
             if record:
                 try:
                     record.edit_email(args[1])
-                    print(Fore.GREEN + f"Email {args[1]} updated for contact {args[0]}" + Style.RESET_ALL)
+                    print(
+                        Fore.GREEN + f"Email {args[1]} updated for contact {args[0]}" + Style.RESET_ALL)
                 except ValueError as e:
                     print(Fore.RED + f"Error: {e}" + Style.RESET_ALL)
             else:
@@ -890,7 +1061,7 @@ def main():
                     Fore.RED + f"Contact {args[0]} not found" + Style.RESET_ALL)
         elif command == 'remove-email' and len(args) >= 1:
             print(remove_email(book, args[0]))
-            
+
         elif command == 'add-address' and len(args) >= 2:
             print(add_address(book, args[0], ' '.join(args[1:])))
         elif command == 'edit-address' and len(args) >= 2:
